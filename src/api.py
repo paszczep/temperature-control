@@ -5,21 +5,33 @@ from random import choice
 @dataclass
 class Read:
     __tablename__ = 'read'
-    __relationship__ = "task_reads"
     id: int
     temperature: str
     read_time: str
     db_time: str
     thermometer: int
-    task: int
 
 
 @dataclass
-class Thermometer:
+class TaskReads:
+    __tablename__ = 'task_reads'
+    task_id: int
+    read_id: int
+
+
+
+@dataclass
+class Meter:
     __tablename__ = 'thermometer'
-    __relationship__ = "container_thermometers"
     device_id: int
     device_name: str
+
+@dataclass
+class ContainerMeter:
+    __tablename__ = "container_thermometers"
+    container_id: str
+    thermometer_id: int
+
 
 
 labels = ['Marcin', 'Klops', 'Kiełbasa', 'Zosia', 'Marchew', 'Ziemia', 'Ojczyzna']
@@ -34,7 +46,6 @@ class Container:
 @dataclass
 class Ctrl:
     __tablename__ = 'Control'
-    __relationship__ = "task_controls"
     id: int
     action: str
     timestamp: int
@@ -47,9 +58,15 @@ class Ctrl:
 
 
 @dataclass
+class TaskCtrl:
+    __tablename__ =  "task_controls"
+    task_id: int
+    control_id: int
+
+
+@dataclass
 class Task:
     __tablename__ = 'Task'
-    __relationship__ = "container_task"
     id: int
     start: int
     duration: int
@@ -58,3 +75,9 @@ class Task:
     t_max: int
     t_freeze: int
     status: str
+
+@dataclass
+class ContainerTask:
+    __tablename__ = 'container_task'
+    container_id: str
+    task_id: int

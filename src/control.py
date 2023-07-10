@@ -1,41 +1,52 @@
 from drive import ContainerValuesDriver
-from measure import read_all_thermometers, Measure
+from measure import read_all_thermometers
 from database import insert_multiple_objects_into_db, clear_table, select_from_db
-from api import Container, Thermometer, Task
+from api import *
+from random import randint
 
 
 def initialize_database():
     containers = [Container(name=container.name) for container in ContainerValuesDriver().read_values()]
     clear_table(container_table := Container.__tablename__)
     insert_multiple_objects_into_db(containers, container_table)
-
     thermometers = [
-        Thermometer(
+        Meter(
             device_id=thermometer.device_id,
             device_name=thermometer.device_name
         ) for thermometer in read_all_thermometers()]
-    clear_table(thermometer_table := Thermometer.__tablename__)
+    clear_table(thermometer_table := Meter.__tablename__)
     insert_multiple_objects_into_db(thermometers, thermometer_table)
 
 
-def relevant_thermometers(the_container_id) -> list[int]:
-    relationships = select_from_db(Thermometer.__relationship__)
-    print(relationships)
-    thermometers = [rel['measure_id'] for rel in relationships]
-    return thermometers
+def relevant_thermometer_ids(the_container_id: str) -> list[int]:
+    relationships = [ContainerMeter(**val) for val in select_from_db(ContainerMeter.__tablename__)]
+    thermometer_ids = [rel.thermometer_id for rel in relationships if rel.container_id == the_container_id]
+    return thermometer_ids
 
 
-def retrieve_tasks(task_id: int = 1):
+def read_temperature(task_id: int = 1):
     tasks = [Task(**task) for task in select_from_db(Task.__tablename__)]
     task = [task for task in tasks if task.id == task_id].pop()
-    print(task)
-    relationships = select_from_db(Task.__relationship__)
-    container = [rel['container_id'] for rel in relationships if rel['task_id'] == task_id].pop()
-    print(container)
-    relevant_ids = relevant_thermometers(container)
+    relationships = [ContainerTask(**rel) for rel in
+                     select_from_db(ContainerTask.__tablename__)]
+    print(relationships)
+    container = [rel.container_id for rel in relationships if rel.task_id == task_id].pop()
+    relevant_ids = relevant_thermometer_ids(container)
     relevant_measures = [measure for measure in read_all_thermometers() if measure.device_id in relevant_ids]
-    print(relevant_measures)
+    existing_read_ids = select_from_db(Read.__tablename__, columns=['id'])
+    print(existing_read_ids)
+    reads = [Read(
+        id=randint(1, 10 ** 6),
+        thermometer=measure.device_id,
+        temperature=measure.temperature,
+        read_time=measure.measure_time,
+        db_time=measure.database_time
+    ) for measure in relevant_measures]
+    insert_multiple_objects_into_db(reads, Read.__tablename__)
+
+    relation_data = [TaskReads(read_id=read.id, task_id=task.id) for read in reads]
+    insert_multiple_objects_into_db(relation_data, TaskReads.__tablename__)
 
 
 if __name__ == "__main__":
-    retrieve_tasks()
+    read_temperature()

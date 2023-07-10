@@ -1,6 +1,6 @@
 import sqlite3
 from pathlib import Path
-from dataclasses import dataclass
+from typing import Union
 
 db_path = Path(__file__).parent.parent.parent / 'temp_ui' / 'instance' / 'db.sqlite'
 
@@ -11,16 +11,27 @@ def db_connection_and_cursor(db_location=db_path):
     return db_connection, db_cursor
 
 
-def select_from_db(table_name) -> list[dict]:
-    select_query = f"""SELECT * FROM {table_name}"""
+def select_from_db(
+        table_name: str,
+        columns: Union[list, None] = None,
+        keys: bool = True
+) -> Union[list, list[dict]]:
+    if not columns:
+        columns = '*'
+    else:
+        columns = str(columns)[1:-1]
+    select_query = f"""SELECT {columns} FROM {table_name}"""
+    print(select_query)
     select_connection, select_cursor = db_connection_and_cursor()
     with select_connection:
         select_cursor.execute(select_query)
         values = select_cursor.fetchall()
-        print(values)
+        if not keys:
+            print(values)
+            return values
         names = [description[0] for description in select_cursor.description]
-        print(names)
         keyed_values = [dict(zip(names, row)) for row in values]
+    print(keyed_values)
     return keyed_values
 
 
@@ -52,3 +63,12 @@ def clear_table(table_name: str):
         delete_cursor.execute(delete_query)
         delete_connection.commit()
 
+
+def insert_into_db(data: dict, table_name: str):
+    value_keys = tuple(data.keys())
+    insert_data = [data[key] for key in value_keys]
+    insert_query = f"INSERT INTO {table_name} {str(value_keys)} VALUES ({str('?, '*len(value_keys))[:-2]})"
+    insert_connection, insert_cursor = db_connection_and_cursor()
+    with insert_connection:
+        insert_cursor.execute(insert_query, insert_data)
+        insert_connection.commit()
