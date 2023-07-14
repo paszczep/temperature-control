@@ -36,6 +36,7 @@ class ContainerMeter:
 
 labels = ['Marcin', 'Klops', 'Kiełbasa', 'Zosia', 'Marchew', 'Ziemia', 'Ojczyzna']
 
+
 @dataclass
 class Container:
     __tablename__ = 'Container'
@@ -75,6 +76,18 @@ class Task:
     t_max: int
     t_freeze: int
     status: str
+
+    @staticmethod
+    def columns():
+        return {
+            'id': int,
+            'start': int,
+            'duration': int,
+            't_start': int,
+            't_min': int,
+            't_max': int,
+            't_freeze': int,
+            'status': str}
 
 @dataclass
 class ContainerTask:

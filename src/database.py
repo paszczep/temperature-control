@@ -2,7 +2,7 @@ import sqlite3
 from pathlib import Path
 from typing import Union
 
-db_path = Path(__file__).parent.parent.parent / 'temp_ui' / 'instance' / 'db.sqlite'
+db_path = Path(__file__).parent.parent.parent / 'taemp_ui' / 'instance' / 'db.sqlite'
 
 
 def db_connection_and_cursor(db_location=db_path):
@@ -19,19 +19,17 @@ def select_from_db(
     if not columns:
         columns = '*'
     else:
-        columns = str(columns)[1:-1]
+        columns = str(columns)[1:-1].replace("'", '')
     select_query = f"""SELECT {columns} FROM {table_name}"""
-    print(select_query)
     select_connection, select_cursor = db_connection_and_cursor()
     with select_connection:
         select_cursor.execute(select_query)
         values = select_cursor.fetchall()
         if not keys:
-            print(values)
-            return values
+            return [val[0] for val in values]
         names = [description[0] for description in select_cursor.description]
         keyed_values = [dict(zip(names, row)) for row in values]
-    print(keyed_values)
+    # print(keyed_values)
     return keyed_values
 
 
@@ -72,3 +70,4 @@ def insert_into_db(data: dict, table_name: str):
     with insert_connection:
         insert_cursor.execute(insert_query, insert_data)
         insert_connection.commit()
+
