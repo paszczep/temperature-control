@@ -36,7 +36,7 @@ class _ContainerDriver:
     password = env_values['CONTROL_PASSWORD']
     binary = FirefoxBinary(env_values['FIREFOX_LOCATION'])
     headless = True
-    debug = False
+    debug = True
 
     def __init__(self):
         options = Options()

@@ -30,7 +30,7 @@ def read_temperature(task_id: int):
     container = [rel.container_id for rel in relationships if rel.task_id == task_id].pop()
     relevant_ids = relevant_thermometer_ids(container)
     relevant_measures = [measure for measure in read_all_thermometers() if measure.device_id in relevant_ids]
-    existing_read_ids = select_from_db(Read.__tablename__, columns=['id'], keys=False)
+    existing_read_ids = select_from_db(Read.__tablename__, select_columns=['id'], keys=False)
     if not existing_read_ids:
         existing_read_ids = [0]
     select_id = max(existing_read_ids)
@@ -47,6 +47,3 @@ def read_temperature(task_id: int):
     relation_data = [TaskReads(read_id=read.id, task_id=task.id) for read in reads]
     insert_multiple_objects_into_db(relation_data, TaskReads.__tablename__)
 
-
-if __name__ == "__main__":
-    read_temperature()
