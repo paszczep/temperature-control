@@ -10,7 +10,7 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class Measure:
-    device_id: int
+    device_id: str
     device_name: str
     temperature: str
     measure_time: str
@@ -39,11 +39,11 @@ def _login_and_get_first_view(session: Session) -> bytes:
     return response_content
 
 
-def _measure_table_rows(soup: BeautifulSoup) -> list:
+def _measure_table_rows(soup: BeautifulSoup) -> list[str]:
     table = [
         [cell.text.strip() for cell in row.find_all('td')]
         for row in soup.find_all('tr')]
-    rows_with_values = [row for row in table if len(row) == 7]
+    rows_with_values = [str(row) for row in table if len(row) == 7]
     return rows_with_values
 
 
@@ -54,7 +54,7 @@ def _measures_from_page(content: BeautifulSoup) -> list[Measure]:
     for table_row in table_rows:
         _, _, name, _, value, device_time, _id = table_row
         devices_readings.append(
-            Measure(int(_id), name, value, device_time, time_now))
+            Measure(_id, name, value, device_time, time_now))
     return devices_readings
 
 

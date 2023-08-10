@@ -1,12 +1,11 @@
 from dotenv import dotenv_values
-from time import sleep
+import time
 from selenium import webdriver
-from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
 from datetime import datetime
 from dataclasses import dataclass
@@ -21,7 +20,7 @@ class Control:
     received: str
     power: str
     setpoint: str
-    database_time: str
+    database_time: int
 
 
 dotenv_path = Path(__file__).parent.parent / '.env'
@@ -48,13 +47,13 @@ class _ContainerDriver:
         return WebDriverWait(self.driver, self.wait_time)
 
     def wait_for_element_and_click(self, *args, click: bool = True):
-        element = self.driver_wait().until(EC.element_to_be_clickable(*args))
+        element = self.driver_wait().until(ec.element_to_be_clickable(*args))
         if click:
             element.click()
         return element
 
     def wait_for_element_visibility(self, *args):
-        return self.driver_wait().until(EC.visibility_of_element_located(*args))
+        return self.driver_wait().until(ec.visibility_of_element_located(*args))
 
     def find_and_fill_input(self, field: str, input_value: str):
         input_field = self.wait_for_element_and_click((By.XPATH, f"//input[@placeholder='{field}']"))
@@ -75,7 +74,7 @@ class ContainerSettingsDriver(_ContainerDriver):
         self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
 
     def _open_temperature_setting_modal(self):
-        sleep(self.wait_time)
+        time.sleep(self.wait_time)
         execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
         execute_button.click()
 
@@ -112,7 +111,7 @@ class ContainerValuesDriver(_ContainerDriver):
         values = all_values[names_number:]
         column_number = len(values) // names_number
         all_data = []
-        time_now = str(datetime.now())
+        time_now = int(time.time())
         for row in range(names_number):
             row_values = values[row * column_number:row * column_number + column_number]
             all_data.append(

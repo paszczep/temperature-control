@@ -1,74 +1,79 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from random import choice
 
 
 @dataclass
 class Read:
     __tablename__ = 'read'
-    id: int
+    id: str
     temperature: str
     read_time: str
     db_time: str
-    thermometer: int
+    thermometer: str
 
 
 @dataclass
 class TaskReads:
     __tablename__ = 'task_reads'
-    task_id: int
-    read_id: int
-
+    task_id: str
+    read_id: str
 
 
 @dataclass
-class Meter:
+class Thermometer:
     __tablename__ = 'thermometer'
-    device_id: int
+    device_id: str
     device_name: str
 
+
 @dataclass
-class ContainerMeter:
+class ContainerThermometer:
     __tablename__ = "container_thermometers"
     container_id: str
-    thermometer_id: int
+    thermometer_id: str
 
 
-
-labels = ['Marcin', 'Klops', 'Kiełbasa', 'Zosia', 'Marchew', 'Ziemia', 'Ojczyzna']
+labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna']
 
 
 @dataclass
 class Container:
     __tablename__ = 'Container'
     name: str
-    label: str = choice(labels)
+    label: str = field(default_factory=lambda: choice(labels))
 
 
 @dataclass
-class Ctrl:
+class Control:
     __tablename__ = 'Control'
-    id: int
-    action: str
+    id: str
+    timestamp: int
+    target_setpoint: str
+
+
+@dataclass
+class Check:
+    __tablename__ = 'check'
+    id: str
+    container: str
     timestamp: int
     logged: str
     received: str
     power: str
-    target_setpoint: str
     read_setpoint: str
-    task: int
 
 
 @dataclass
-class TaskCtrl:
-    __tablename__ =  "task_controls"
-    task_id: int
-    control_id: int
+class TaskControl:
+    __tablename__ = "task_controls"
+    task_id: str
+    control_id: str
 
 
 @dataclass
 class Task:
     __tablename__ = 'Task'
-    id: int
+    id: str
     start: int
     duration: int
     t_start: int
@@ -77,20 +82,19 @@ class Task:
     t_freeze: int
     status: str
 
-    @staticmethod
-    def columns():
-        return {
-            'id': int,
-            'start': int,
-            'duration': int,
-            't_start': int,
-            't_min': int,
-            't_max': int,
-            't_freeze': int,
-            'status': str}
 
 @dataclass
 class ContainerTask:
     __tablename__ = 'container_task'
     container_id: str
-    task_id: int
+    task_id: str
+
+
+@dataclass
+class Set:
+    __tablename__ = 'set'
+    id: str
+    status: str
+    temperature: int
+    timestamp: int
+    container: str
