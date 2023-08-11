@@ -14,26 +14,27 @@ def db_connection_and_cursor(db_location=db_path):
 def select_from_db(
         table_name: str,
         select_columns: Union[list, None] = None,
-        where: Union[dict, None] = None,
+        where_condition: Union[dict, None] = None,
         keys: bool = True
 ) -> Union[list, list[dict]]:
 
-    def col_str(columns):
+    def col_str(columns: list):
         if not columns:
             columns = '*'
         else:
             columns = str(columns)[1:-1].replace("'", '')
         return columns
 
-    def where_clause(where) -> str:
-        if where:
-            where_str = f" WHERE {list(where.keys())[0]} = '{list(where.values())[0]}'"
+    def where_clause(condition: dict) -> str:
+        if condition:
+            where_str = f" WHERE {list(condition.keys())[0]} = '{list(condition.values())[0]}'"
             return where_str
         else:
             return ''
 
-    select_query = f"""SELECT {col_str(select_columns)} FROM {table_name}{where_clause(where)}"""
+    select_query = f"""SELECT {col_str(select_columns)} FROM {table_name}{where_clause(where_condition)}"""
     select_connection, select_cursor = db_connection_and_cursor()
+
     with select_connection:
         select_cursor.execute(select_query)
         values = select_cursor.fetchall()
@@ -41,6 +42,7 @@ def select_from_db(
             return [val[0] for val in values]
         names = [description[0] for description in select_cursor.description]
         keyed_values = [dict(zip(names, row)) for row in values]
+
     return keyed_values
 
 
@@ -82,4 +84,3 @@ def insert_into_db(data: dict, table_name: str):
     with insert_connection:
         insert_cursor.execute(insert_query, insert_data)
         insert_connection.commit()
-

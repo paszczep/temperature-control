@@ -8,7 +8,7 @@ class Read:
     id: str
     temperature: str
     read_time: str
-    db_time: str
+    db_time: int
     thermometer: str
 
 
@@ -23,6 +23,7 @@ class TaskReads:
 class Thermometer:
     __tablename__ = 'thermometer'
     device_id: str
+    device_group: str
     device_name: str
 
 

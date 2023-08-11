@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from dotenv import dotenv_values
 from typing import Union
 from login import filled_login_params
-from datetime import datetime
+from time import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -12,9 +12,10 @@ from pathlib import Path
 class Measure:
     device_id: str
     device_name: str
+    group: str
     temperature: str
     measure_time: str
-    database_time: str
+    database_time: int
 
 
 dotenv_path = Path(__file__).parent.parent / '.env'
@@ -39,22 +40,22 @@ def _login_and_get_first_view(session: Session) -> bytes:
     return response_content
 
 
-def _measure_table_rows(soup: BeautifulSoup) -> list[str]:
+def _measure_table_rows(soup: BeautifulSoup) -> list[list]:
     table = [
         [cell.text.strip() for cell in row.find_all('td')]
         for row in soup.find_all('tr')]
-    rows_with_values = [str(row) for row in table if len(row) == 7]
+    rows_with_values = [row for row in table if len(row) == 7]
     return rows_with_values
 
 
 def _measures_from_page(content: BeautifulSoup) -> list[Measure]:
     table_rows = _measure_table_rows(content)
     devices_readings = list()
-    time_now = str(datetime.now())
+    time_now = int(time())
     for table_row in table_rows:
-        _, _, name, _, value, device_time, _id = table_row
+        _, _, name, group, value, device_time, _id = table_row
         devices_readings.append(
-            Measure(_id, name, value, device_time, time_now))
+            Measure(_id, name, group, value, device_time, time_now))
     return devices_readings
 
 

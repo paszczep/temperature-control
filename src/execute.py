@@ -22,18 +22,20 @@ def deffo_run():
 def run():
     parser = argparse.ArgumentParser()
     parser.add_argument("--initialize", action='store_true', help="initialize database")
-    parser.add_argument("--task", action='store_true', help="read and control task id")
-    parser.add_argument("--set", action='store_true', help="set id")
+    parser.add_argument("--task", action='store', help="read and control task id")
+    parser.add_argument("--set", action='store', help="set id")
 
     args = parser.parse_args()
     if args.initialize:
         initialize_database()
 
     if args.task:
-        read_temperature(task_id=args.id)
+        print(args.task)
+        # read_temperature(task_id=args.id)
 
     if args.set:
-        set_temperature(set_id=args.id)
+        print(args.set)
+        # set_temperature(set_id=args.id)
 
 
 if __name__ == '__main__':
