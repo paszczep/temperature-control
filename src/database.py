@@ -50,7 +50,6 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
     object_zero = data_objects[0]
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
-    print(insert_data)
     insert_query = f"INSERT INTO {table_name} {str(value_keys)} VALUES ({str('?, '*len(value_keys))[:-2]})"
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_connection:

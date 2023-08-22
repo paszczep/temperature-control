@@ -40,13 +40,9 @@ def read_temperature(task_id: int):
     container = [rel.container_id for rel in relationships if rel.task_id == task_id].pop()
     relevant_ids = relevant_thermometer_ids(container)
     relevant_measures = [measure for measure in read_all_thermometers() if measure.device_id in relevant_ids]
-    existing_read_ids = select_from_db(Read.__tablename__, select_columns=['id'], keys=False)
-    if not existing_read_ids:
-        existing_read_ids = [0]
-    select_id = max(existing_read_ids)
 
     reads = [Read(
-        id=(select_id := select_id + 1),
+        id=str(uuid4()),
         thermometer=measure.device_id,
         temperature=measure.temperature,
         read_time=measure.measure_time,
@@ -70,9 +66,10 @@ def check_containers():
             read_setpoint=c.setpoint
         )
         for c in ContainerValuesDriver().read_values()]
-    insert_multiple_objects_into_db(control_data, Control.__tablename__)
+    insert_multiple_objects_into_db(control_data, Check.__tablename__)
 
 
 def set_temperature(set_id: int):
-    select_set = [Set(**s) for s in select_from_db(table_name=Set.__tablename__, where_condition={'id': set_id})].pop()
-    print(select_set)
+    select_set = [Set(**s) for s in
+                  select_from_db(table_name=Set.__tablename__, where_condition={'id': set_id})].pop()
+    print(select_set.__dict__)

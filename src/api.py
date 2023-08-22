@@ -54,7 +54,7 @@ class Control:
 
 @dataclass
 class Check:
-    __tablename__ = 'check'
+    __tablename__ = 'container_check'
     id: str
     container: str
     timestamp: int

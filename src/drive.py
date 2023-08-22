@@ -1,6 +1,7 @@
 from dotenv import dotenv_values
 import time
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
@@ -14,7 +15,7 @@ import os
 
 
 @dataclass
-class Control:
+class Ctrl:
     name: str
     logged: str
     received: str
@@ -34,12 +35,11 @@ class _ContainerDriver:
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
     binary = FirefoxBinary(env_values['FIREFOX_LOCATION'])
-    headless = True
     debug = True
 
     def __init__(self):
         options = Options()
-        options.headless = self.headless
+        options.headless = True
         service = Service(log_path=os.devnull)
         self.driver = webdriver.Firefox(options=options, service=service)
 
@@ -115,7 +115,7 @@ class ContainerValuesDriver(_ContainerDriver):
         for row in range(names_number):
             row_values = values[row * column_number:row * column_number + column_number]
             all_data.append(
-                Control(
+                Ctrl(
                     name=names.pop(),
                     logged=row_values[0],
                     received=row_values[1],
@@ -125,8 +125,15 @@ class ContainerValuesDriver(_ContainerDriver):
                 ))
         return all_data
 
-    def read_values(self) -> list[Control]:
+    def click_not_now(self):
+        try:
+            self.wait_for_element_and_click((By.ID, 'btn_notnow'))
+        except NoSuchElementException:
+            pass
+
+    def read_values(self) -> list[Ctrl]:
         self.sign_in()
+        self.click_not_now()
         names = self._read_container_names()
         values = self._read_container_values()
         container_data = self._parse_value_table(names, values)
