@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 from typing import Union
+from api import Set, Task
 
 db_path = Path(__file__).parent.parent.parent / 'taemp_ui' / 'instance' / 'db.sqlite'
 
@@ -82,4 +83,14 @@ def insert_into_db(data: dict, table_name: str):
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_connection:
         insert_cursor.execute(insert_query, insert_data)
+        insert_connection.commit()
+
+
+def update_status_in_db(update_object: Union[Task, Set]):
+    insert_connection, insert_cursor = db_connection_and_cursor()
+    update_query = f"""
+        UPDATE {update_object.__tablename__} SET status='{update_object.status}' WHERE id='{update_object.id}'
+        """
+    with insert_connection:
+        insert_cursor.execute(update_query)
         insert_connection.commit()

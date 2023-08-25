@@ -93,9 +93,15 @@ class ContainerTask:
 
 @dataclass
 class Set:
-    __tablename__ = 'set'
+    __tablename__ = 'temp_set'
     id: str
     status: str
     temperature: int
     timestamp: int
-    container: str
+
+
+@dataclass
+class ContainerSet:
+    __tablename__ = 'container_set'
+    container_id: str
+    set_id: str

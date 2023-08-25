@@ -14,9 +14,10 @@ def run():
     if args.initialize:
         initialize_database(),
     elif args.task:
-        read_temperature(task_id=args.task),
+        read_temperature(task_id=args.task)
     elif args.set:
-        set_temperature(set_id=args.set),
+        print(args.set)
+        set_temperature(set_id=args.set)
     elif args.check:
         check_containers()
 

@@ -1,6 +1,6 @@
-from drive import ContainerValuesDriver
+from drive import ContainerValuesDriver, ContainerSettingsDriver
 from measure import read_all_thermometers
-from database import insert_multiple_objects_into_db, clear_table, select_from_db
+from database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db
 from api import *
 # from random import randint
 # from typing import Union
@@ -69,7 +69,22 @@ def check_containers():
     insert_multiple_objects_into_db(control_data, Check.__tablename__)
 
 
-def set_temperature(set_id: int):
+def set_temperature(set_id: str):
     select_set = [Set(**s) for s in
                   select_from_db(table_name=Set.__tablename__, where_condition={'id': set_id})].pop()
     print(select_set.__dict__)
+    set_container = [ContainerSet(**c) for c in select_from_db(
+                            table_name=ContainerSet.__tablename__,
+                            where_condition={'set_id': set_id})].pop()
+    print(set_container.__dict__)
+    if select_set.status == 'cancelled':
+        select_set.status = 'ended'
+        update_status_in_db(select_set)
+    if select_set.status == 'running':
+        ContainerSettingsDriver().set_temperature(
+            container=set_container.container_id,
+            temperature=f'{str(select_set.temperature)}.0')
+        select_set.status = 'ended'
+        update_status_in_db(select_set)
+
+
