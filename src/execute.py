@@ -1,5 +1,5 @@
 import argparse
-from control import initialize_database, read_temperature, set_temperature, check_containers
+from control import initialize_database, read_temperature, temperature_setting_process, check_containers
 
 
 def run():
@@ -16,8 +16,7 @@ def run():
     elif args.task:
         read_temperature(task_id=args.task)
     elif args.set:
-        print(args.set)
-        set_temperature(set_id=args.set)
+        temperature_setting_process(set_id=args.set)
     elif args.check:
         check_containers()
 

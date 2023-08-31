@@ -1,8 +1,8 @@
 from dotenv import dotenv_values
 import time
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
+from selenium.common.exceptions import TimeoutException
+# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
@@ -30,16 +30,16 @@ env_values = dotenv_values(dotenv_path)
 
 
 class _ContainerDriver:
-    wait_time = 15
+    wait_time = 5
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
-    binary = FirefoxBinary(env_values['FIREFOX_LOCATION'])
+    # binary = FirefoxBinary(env_values['FIREFOX_LOCATION'])
     debug = True
 
     def __init__(self):
         options = Options()
-        options.headless = True
+        options.headless = False
         service = Service(log_path=os.devnull)
         self.driver = webdriver.Firefox(options=options, service=service)
 
@@ -62,7 +62,7 @@ class _ContainerDriver:
     def click_not_now(self):
         try:
             self.wait_for_element_and_click((By.ID, 'btn_notnow'))
-        except NoSuchElementException:
+        except TimeoutException:
             pass
 
     def sign_in(self):
@@ -72,29 +72,6 @@ class _ContainerDriver:
         self.find_and_fill_input('Password', self.password)
         sign_in_button.click()
         self.click_not_now()
-
-
-class ContainerSettingsDriver(_ContainerDriver):
-    def _open_container_commands(self, container_name: str):
-        self.wait_for_element_and_click((By.XPATH, f"//*[contains(text(), '{container_name}')]"))
-        self.wait_for_element_and_click((By.CSS_SELECTOR, 'div.k-icon.k-collapse-prev'))
-        self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
-
-    def _open_temperature_setting_modal(self):
-        time.sleep(self.wait_time)
-        execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
-        execute_button.click()
-
-    def _enter_temperature_setting(self, temperature_set_point: str):
-        self.find_and_fill_input('Set point', temperature_set_point)
-        self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'), click=not self.debug)
-
-    def set_temperature(self, container: str, temperature: str):
-        self.sign_in()
-        self._open_container_commands(container)
-        self._open_temperature_setting_modal()
-        self._enter_temperature_setting(temperature)
-        self.driver.close()
 
 
 class ContainerValuesDriver(_ContainerDriver):
@@ -132,10 +109,53 @@ class ContainerValuesDriver(_ContainerDriver):
                 ))
         return all_data
 
-    def read_values(self) -> list[Ctrl]:
-        self.sign_in()
+    def container_values_reading_action(self) -> list[Ctrl]:
         names = self._read_container_names()
         values = self._read_container_values()
         container_data = self._parse_value_table(names, values)
+        return container_data
+
+    def read_values(self) -> list[Ctrl]:
+        self.sign_in()
+        container_data = self.container_values_reading_action()
         self.driver.close()
         return container_data
+
+
+class ContainerSettingsDriver(ContainerValuesDriver):
+    def _open_container_commands(self, container_name: str):
+        self.wait_for_element_and_click((By.XPATH, f"//*[contains(text(), '{container_name}')]"))
+        self.wait_for_element_and_click((By.CSS_SELECTOR, 'div.k-icon.k-collapse-prev'))
+        self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
+
+    def _open_temperature_setting_modal(self):
+        time.sleep(self.wait_time/2)
+        execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
+        execute_button.click()
+
+    def _enter_temperature_setting(self, temperature_set_point: str):
+        self.find_and_fill_input('Set point', temperature_set_point)
+        if self.debug:
+            commands_dialog = self.driver.find_elements(By.ID, 'commandsDialog')[0]
+            commands_dialog.find_elements(By.CSS_SELECTOR, 'button.btn.btn-default')[0].click()
+        else:
+            self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
+
+    def _temperature_setting_action(self, container: str, temperature: str, retry: int = 3):
+        check_values = self.container_values_reading_action()
+        container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
+        if container_check.setpoint != temperature:
+            self._open_container_commands(container)
+            self._open_temperature_setting_modal()
+            self._enter_temperature_setting(temperature)
+            time.sleep(self.wait_time/2)
+            self.wait_for_element_and_click((By.CSS_SELECTOR, 'a.navbar-brand'))
+            time.sleep(30)
+            retry -= 1
+            if retry >= 0:
+                self._temperature_setting_action(container, temperature, retry)
+
+    def set_temperature(self, container: str, temperature: str):
+        self.sign_in()
+        self._temperature_setting_action(container, temperature)
+        self.driver.close()

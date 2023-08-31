@@ -1,9 +1,9 @@
+import time
+
 from drive import ContainerValuesDriver, ContainerSettingsDriver
 from measure import read_all_thermometers
 from database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db
 from api import *
-# from random import randint
-# from typing import Union
 from uuid import uuid4
 
 
@@ -41,13 +41,16 @@ def read_temperature(task_id: int):
     relevant_ids = relevant_thermometer_ids(container)
     relevant_measures = [measure for measure in read_all_thermometers() if measure.device_id in relevant_ids]
 
-    reads = [Read(
-        id=str(uuid4()),
-        thermometer=measure.device_id,
-        temperature=measure.temperature,
-        read_time=measure.measure_time,
-        db_time=measure.database_time
-    ) for measure in relevant_measures]
+    reads = [
+        Read(
+            id=str(uuid4()),
+            thermometer=measure.device_id,
+            temperature=measure.temperature,
+            read_time=measure.measure_time,
+            db_time=measure.database_time
+        )
+        for measure in relevant_measures]
+
     insert_multiple_objects_into_db(reads, Read.__tablename__)
 
     relation_data = [TaskReads(read_id=read.id, task_id=task.id) for read in reads]
@@ -66,25 +69,30 @@ def check_containers():
             read_setpoint=c.setpoint
         )
         for c in ContainerValuesDriver().read_values()]
+
     insert_multiple_objects_into_db(control_data, Check.__tablename__)
 
 
-def set_temperature(set_id: str):
-    select_set = [Set(**s) for s in
-                  select_from_db(table_name=Set.__tablename__, where_condition={'id': set_id})].pop()
-    print(select_set.__dict__)
-    set_container = [ContainerSet(**c) for c in select_from_db(
-                            table_name=ContainerSet.__tablename__,
-                            where_condition={'set_id': set_id})].pop()
-    print(set_container.__dict__)
+def temperature_setting_process(set_id: str):
+
+    select_set = [
+        Set(**s) for s in select_from_db(
+            table_name=Set.__tablename__, where_condition={'id': set_id})].pop()
+
+    set_container = [
+        ContainerSet(**c) for c in select_from_db(
+            table_name=ContainerSet.__tablename__, where_condition={'set_id': set_id})].pop()
+
     if select_set.status == 'cancelled':
         select_set.status = 'ended'
         update_status_in_db(select_set)
+
     if select_set.status == 'running':
         ContainerSettingsDriver().set_temperature(
             container=set_container.container_id,
             temperature=f'{str(select_set.temperature)}.0')
+
+        time.sleep(5*60)
+
         select_set.status = 'ended'
         update_status_in_db(select_set)
-
-
