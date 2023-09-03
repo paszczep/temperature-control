@@ -39,7 +39,7 @@ class _ContainerDriver:
 
     def __init__(self):
         options = Options()
-        options.headless = False
+        options.headless = True
         service = Service(log_path=os.devnull)
         self.driver = webdriver.Firefox(options=options, service=service)
 

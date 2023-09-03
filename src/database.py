@@ -1,13 +1,24 @@
-import sqlite3
 from pathlib import Path
 from typing import Union
 from api import Set, Task
+from psycopg2 import connect
+from dotenv import dotenv_values
 
-db_path = Path(__file__).parent.parent.parent / 'taemp_ui' / 'instance' / 'db.sqlite'
+dotenv_path = Path(__file__).parent.parent / '.env'
+
+env_values = dotenv_values(dotenv_path)
+
+config = {
+    "host": env_values['DB_HOST'],
+    "dbname": env_values['DB_NAME'],
+    "user": env_values['DB_USER'],
+    "password": env_values['DB_PASSWORD'],
+    "port": env_values['DB_HOST']
+}
 
 
-def db_connection_and_cursor(db_location=db_path):
-    db_connection = sqlite3.connect(db_location)
+def db_connection_and_cursor():
+    db_connection = connect(**config)
     db_cursor = db_connection.cursor()
     return db_connection, db_cursor
 
@@ -51,7 +62,7 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
     object_zero = data_objects[0]
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
-    insert_query = f"INSERT INTO {table_name} {str(value_keys)} VALUES ({str('?, '*len(value_keys))[:-2]})"
+    insert_query = f"""INSERT INTO {table_name} {str(value_keys).replace("'", "")} VALUES ({str('%s, '*len(value_keys))[:-2]})"""
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_connection:
         insert_cursor.executemany(insert_query, insert_data)

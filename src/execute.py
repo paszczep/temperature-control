@@ -4,6 +4,7 @@ from control import initialize_database, read_temperature, temperature_setting_p
 
 def run():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--key", action='store', help="protect and serve")
     parser.add_argument("--initialize", action='store_true', help="initialize database")
     parser.add_argument("--check", action='store_true', help="check and update containers")
     parser.add_argument("--task", action='store', help="read and control task id")
@@ -12,7 +13,7 @@ def run():
     args = parser.parse_args()
 
     if args.initialize:
-        initialize_database(),
+        initialize_database()
     elif args.task:
         read_temperature(task_id=args.task)
     elif args.set:

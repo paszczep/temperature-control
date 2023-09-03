@@ -1,5 +1,4 @@
 import time
-
 from drive import ContainerValuesDriver, ContainerSettingsDriver
 from measure import read_all_thermometers
 from database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db
