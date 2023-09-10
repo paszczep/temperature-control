@@ -4,21 +4,21 @@ from api import Set, Task
 from psycopg2 import connect
 from dotenv import dotenv_values
 
-dotenv_path = Path(__file__).parent.parent / '.env'
+dotenv_path = Path(__file__).parent.parent / 'prod.env'
 
 env_values = dotenv_values(dotenv_path)
 
-config = {
+db_config = {
     "host": env_values['DB_HOST'],
     "dbname": env_values['DB_NAME'],
     "user": env_values['DB_USER'],
     "password": env_values['DB_PASSWORD'],
-    "port": env_values['DB_HOST']
+    "port": env_values['DB_PORT']
 }
 
 
 def db_connection_and_cursor():
-    db_connection = connect(**config)
+    db_connection = connect(**db_config)
     db_cursor = db_connection.cursor()
     return db_connection, db_cursor
 

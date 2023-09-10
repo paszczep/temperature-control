@@ -72,6 +72,13 @@ class TaskControl:
 
 
 @dataclass
+class SetControl:
+    __tablename__ = "set_controls"
+    set_id: str
+    control_id: str
+
+
+@dataclass
 class Task:
     __tablename__ = 'Task'
     id: str

@@ -6,6 +6,12 @@ from login import filled_login_params
 from time import time
 from dataclasses import dataclass
 from pathlib import Path
+from os import getenv
+
+
+dotenv_path = Path(__file__).parent.parent / 'prod.env'
+
+env_values = dotenv_values(dotenv_path)
 
 
 @dataclass(frozen=True)
@@ -18,9 +24,6 @@ class Measure:
     database_time: int
 
 
-dotenv_path = Path(__file__).parent.parent / '.env'
-
-env_values = dotenv_values(dotenv_path)
 base_url = env_values['MEASURE_URL']
 login = env_values['MEASURE_LOGIN']
 password = env_values['MEASURE_PASSWORD']

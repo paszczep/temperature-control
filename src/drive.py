@@ -1,17 +1,15 @@
 from dotenv import dotenv_values
-import time
+from time import time, sleep
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
-# from selenium.webdriver.firefox.firefox_binary import FirefoxBinary
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
-# from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
-import os
+from os import devnull
 
 
 @dataclass
@@ -24,8 +22,7 @@ class Ctrl:
     database_time: int
 
 
-dotenv_path = Path(__file__).parent.parent / '.env'
-
+dotenv_path = Path(__file__).parent.parent / 'prod.env'
 env_values = dotenv_values(dotenv_path)
 
 
@@ -40,7 +37,7 @@ class _ContainerDriver:
     def __init__(self):
         options = Options()
         options.headless = True
-        service = Service(log_path=os.devnull)
+        service = Service(log_path=devnull)
         self.driver = webdriver.Firefox(options=options, service=service)
 
     def driver_wait(self):
@@ -95,7 +92,7 @@ class ContainerValuesDriver(_ContainerDriver):
         values = all_values[names_number:]
         column_number = len(values) // names_number
         all_data = []
-        time_now = int(time.time())
+        time_now = int(time())
         for row in range(names_number):
             row_values = values[row * column_number:row * column_number + column_number]
             all_data.append(
@@ -129,7 +126,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
 
     def _open_temperature_setting_modal(self):
-        time.sleep(self.wait_time/2)
+        sleep(self.wait_time/2)
         execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
         execute_button.click()
 
@@ -141,21 +138,26 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         else:
             self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
 
-    def _temperature_setting_action(self, container: str, temperature: str, retry: int = 3):
+    def temperature_setting_action(self, container: str, temperature: str):
+        self._open_container_commands(container)
+        self._open_temperature_setting_modal()
+        self._enter_temperature_setting(temperature)
+        sleep(self.wait_time / 2)
+        self.wait_for_element_and_click((By.CSS_SELECTOR, 'a.navbar-brand'))
+
+    def _temperature_check_and_setting(self, container: str, temperature: str, retry: int = 3) -> Ctrl:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
-        if container_check.setpoint != temperature:
-            self._open_container_commands(container)
-            self._open_temperature_setting_modal()
-            self._enter_temperature_setting(temperature)
-            time.sleep(self.wait_time/2)
-            self.wait_for_element_and_click((By.CSS_SELECTOR, 'a.navbar-brand'))
-            time.sleep(30)
+        if container_check.setpoint != temperature and retry:
+            self.temperature_setting_action(container, temperature)
+            sleep(30)
             retry -= 1
-            if retry >= 0:
-                self._temperature_setting_action(container, temperature, retry)
+            self._temperature_check_and_setting(container, temperature, retry)
+        else:
+            return container_check
 
-    def set_temperature(self, container: str, temperature: str):
+    def set_temperature(self, container: str, temperature: str) -> Ctrl:
         self.sign_in()
-        self._temperature_setting_action(container, temperature)
+        setting_ctrl = self._temperature_check_and_setting(container, temperature)
         self.driver.close()
+        return setting_ctrl
