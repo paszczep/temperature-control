@@ -1,17 +1,20 @@
+from .login import filled_login_params
 from requests import Session
 from bs4 import BeautifulSoup
-from dotenv import dotenv_values
 from typing import Union
-from login import filled_login_params
 from time import time
 from dataclasses import dataclass
 from pathlib import Path
-from os import getenv
+from dotenv import dotenv_values
 
 
 dotenv_path = Path(__file__).parent.parent / 'prod.env'
-
 env_values = dotenv_values(dotenv_path)
+
+
+base_url = env_values.get('MEASURE_URL')
+login = env_values.get('MEASURE_LOGIN')
+password = env_values.get('MEASURE_PASSWORD')
 
 
 @dataclass(frozen=True)
@@ -22,11 +25,6 @@ class Measure:
     temperature: str
     measure_time: str
     database_time: int
-
-
-base_url = env_values['MEASURE_URL']
-login = env_values['MEASURE_LOGIN']
-password = env_values['MEASURE_PASSWORD']
 
 
 def _login_and_get_first_view(session: Session) -> bytes:

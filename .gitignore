@@ -3,3 +3,6 @@ __pycache__
 venv
 prod.env
 local.env
+invoke.sh
+output.txt
+test.json

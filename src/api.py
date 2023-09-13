@@ -34,7 +34,7 @@ class ContainerThermometer:
     thermometer_id: str
 
 
-labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna']
+labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna', 'Kazimierz', 'Marta', 'Fasola']
 
 
 @dataclass

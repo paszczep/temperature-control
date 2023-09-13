@@ -1,15 +1,18 @@
-from dotenv import dotenv_values
 from time import time, sleep
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.firefox.service import Service
+from tempfile import mkdtemp
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
 from dataclasses import dataclass
+from os import getenv
 from pathlib import Path
-from os import devnull
+from dotenv import dotenv_values
+
+
+dotenv_path = Path(__file__).parent.parent / 'prod.env'
+env_values = dotenv_values(dotenv_path)
 
 
 @dataclass
@@ -22,23 +25,32 @@ class Ctrl:
     database_time: int
 
 
-dotenv_path = Path(__file__).parent.parent / 'prod.env'
-env_values = dotenv_values(dotenv_path)
-
-
 class _ContainerDriver:
     wait_time = 5
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
-    # binary = FirefoxBinary(env_values['FIREFOX_LOCATION'])
-    debug = True
+    debug = False
 
     def __init__(self):
-        options = Options()
-        options.headless = True
-        service = Service(log_path=devnull)
-        self.driver = webdriver.Firefox(options=options, service=service)
+        options = webdriver.ChromeOptions()
+        service = webdriver.ChromeService("/opt/chromedriver")
+
+        options.binary_location = '/opt/chrome/chrome'
+        options.add_argument('--headless')
+        options.add_argument('--no-sandbox')
+        options.add_argument("--disable-gpu")
+        options.add_argument("--window-size=1280x1696")
+        options.add_argument("--single-process")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-dev-tools")
+        options.add_argument("--no-zygote")
+        options.add_argument(f"--user-data-dir={mkdtemp()}")
+        options.add_argument(f"--data-path={mkdtemp()}")
+        options.add_argument(f"--disk-cache-dir={mkdtemp()}")
+        options.add_argument("--remote-debugging-port=9222")
+
+        self.driver = webdriver.Chrome(options=options, service=service)
 
     def driver_wait(self):
         return WebDriverWait(self.driver, self.wait_time)
@@ -132,32 +144,26 @@ class ContainerSettingsDriver(ContainerValuesDriver):
 
     def _enter_temperature_setting(self, temperature_set_point: str):
         self.find_and_fill_input('Set point', temperature_set_point)
-        if self.debug:
+        if not self.debug:
+            self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
+        else:
             commands_dialog = self.driver.find_elements(By.ID, 'commandsDialog')[0]
             commands_dialog.find_elements(By.CSS_SELECTOR, 'button.btn.btn-default')[0].click()
-        else:
-            self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
 
-    def temperature_setting_action(self, container: str, temperature: str):
+    def _temperature_setting_action(self, container: str, temperature: str):
         self._open_container_commands(container)
         self._open_temperature_setting_modal()
         self._enter_temperature_setting(temperature)
-        sleep(self.wait_time / 2)
-        self.wait_for_element_and_click((By.CSS_SELECTOR, 'a.navbar-brand'))
 
-    def _temperature_check_and_setting(self, container: str, temperature: str, retry: int = 3) -> Ctrl:
+    def _temperature_check_and_setting(self, container: str, temperature: str) -> list[Ctrl]:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
-        if container_check.setpoint != temperature and retry:
-            self.temperature_setting_action(container, temperature)
-            sleep(30)
-            retry -= 1
-            self._temperature_check_and_setting(container, temperature, retry)
-        else:
-            return container_check
+        if container_check.setpoint != temperature:
+            self._temperature_setting_action(container, temperature)
+        return check_values
 
-    def set_temperature(self, container: str, temperature: str) -> Ctrl:
+    def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[Ctrl]:
         self.sign_in()
-        setting_ctrl = self._temperature_check_and_setting(container, temperature)
+        read_settings = self._temperature_check_and_setting(container, temperature)
         self.driver.close()
-        return setting_ctrl
+        return read_settings
