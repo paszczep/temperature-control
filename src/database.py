@@ -18,10 +18,10 @@ db_config = {
     "port": env_values.get('DB_PORT')
 }
 
+db_connection = connect(**db_config)
 
 
 def db_connection_and_cursor():
-    db_connection = connect(**db_config)
     db_cursor = db_connection.cursor()
     return db_connection, db_cursor
 
@@ -74,7 +74,6 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
     insert_query = f"""
         INSERT INTO {table_name} {str(value_keys).replace("'", "")} VALUES ({str('%s, '*len(value_keys))[:-2]})"""
-    print(insert_query)
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_cursor:
         insert_cursor.executemany(insert_query, insert_data)
@@ -84,7 +83,8 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
 def insert_one_object_into_db(data_object: object, table_name: str):
     value_keys = tuple(data_object.__annotations__.keys())
     insert_data = [data_object.__dict__[key] for key in value_keys]
-    insert_query = f"INSERT INTO {table_name} {str(value_keys)} VALUES ({str('?, '*len(value_keys))[:-2]})"
+    insert_query = f"""
+        INSERT INTO {table_name} {str(value_keys).replace("'", "")} VALUES ({str('%s, '*len(value_keys))[:-2]})"""
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_cursor:
         insert_cursor.execute(insert_query, insert_data)

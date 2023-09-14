@@ -12,6 +12,7 @@ import time
 def initialize_database():
 
     def clear_data_tables():
+        """ no comment """
         clear_table(Control.__tablename__)
         clear_table(Read.__tablename__)
         clear_table(Task.__tablename__)

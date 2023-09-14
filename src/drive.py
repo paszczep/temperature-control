@@ -6,9 +6,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.common.by import By
 from dataclasses import dataclass
-from os import getenv
 from pathlib import Path
 from dotenv import dotenv_values
+import logging
 
 
 dotenv_path = Path(__file__).parent.parent / '.env'
@@ -30,7 +30,7 @@ class _ContainerDriver:
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
-    debug = False
+    debug = env_values.get()
 
     def __init__(self):
         options = webdriver.ChromeOptions()
@@ -158,6 +158,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
     def _temperature_check_and_setting(self, container: str, temperature: str) -> list[Ctrl]:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
+        logging.info(f'read: {container_check.setpoint}, required: {temperature}')
         if container_check.setpoint != temperature:
             self._temperature_setting_action(container, temperature)
         return check_values
