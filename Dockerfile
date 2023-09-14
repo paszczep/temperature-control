@@ -14,11 +14,8 @@ RUN pip install selenium==4.12.0
 COPY --from=build /opt/chrome-linux /opt/chrome
 COPY --from=build /opt/chromedriver /opt/
 COPY src ./src
-COPY prod.env ./
+COPY .env ./
 COPY requirements.txt ./
-# RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
-RUN ls src
-RUN ls
-RUN pwd
+RUN rm requirements.txt
 CMD [ "src.run.handler" ]

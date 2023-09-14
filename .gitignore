@@ -1,7 +1,7 @@
 __pycache__
 .idea
 venv
-prod.env
+.env
 local.env
 invoke.sh
 output.txt

@@ -3,9 +3,10 @@ from os import getenv
 from hashlib import sha256
 from pathlib import Path
 from dotenv import dotenv_values
+import logging
 
 
-dotenv_path = Path(__file__).parent.parent / 'prod.env'
+dotenv_path = Path(__file__).parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 
@@ -17,6 +18,7 @@ def run_lambda(event, context):
     got_event = event.get('queryStringParameters')
     if got_event:
         event = got_event
+    logging.info(f'{event}')
     if event:
         key_1 = event.get('key_1', None)
         key_2 = event.get('key_2', None)

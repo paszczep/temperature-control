@@ -1,4 +1,3 @@
-import time
 from .drive import ContainerValuesDriver, ContainerSettingsDriver
 from .measure import read_all_thermometers
 from .database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db, \
@@ -6,6 +5,8 @@ from .database import insert_multiple_objects_into_db, clear_table, select_from_
 from .api import Container, Check, Control, ContainerSet, ContainerThermometer, ContainerTask, Thermometer, Read,\
     TaskReads, Task, Set, SetControl, TaskControl
 from uuid import uuid4
+import logging
+import time
 
 
 def initialize_database():
@@ -86,7 +87,7 @@ def read_relevant_temperature(task_id: str) -> list[Read]:
 
 
 def check_containers():
-    print('running')
+    logging.info('checking containers')
     control_data = [
         Check(
             id=str(uuid4()),
@@ -98,7 +99,7 @@ def check_containers():
             read_setpoint=c.setpoint
         )
         for c in ContainerValuesDriver().read_values()]
-
+    logging.info(f'found {len(control_data)} containers')
     insert_multiple_objects_into_db(control_data, Check.__tablename__)
 
 
@@ -116,7 +117,7 @@ def set_process(set_id: str):
         container_controls = ContainerSettingsDriver().check_containers_and_set_temperature(
             container=set_container.container_id,
             temperature=(set_temperature := f'{str(performed_set.temperature)}.0'))
-
+        logging.info(f'attempted setting {performed_set.temperature} in {set_container}')
         control_data = [
             Check(
                 id=str(uuid4()),

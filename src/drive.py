@@ -11,7 +11,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 
-dotenv_path = Path(__file__).parent.parent / 'prod.env'
+dotenv_path = Path(__file__).parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 

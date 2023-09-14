@@ -46,7 +46,7 @@ class Container:
 
 @dataclass
 class Control:
-    __tablename__ = 'Control'
+    __tablename__ = 'control'
     id: str
     timestamp: int
     target_setpoint: str
