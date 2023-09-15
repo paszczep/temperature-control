@@ -30,7 +30,7 @@ class _ContainerDriver:
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
-    debug = env_values.get()
+    debug = env_values.get('DEBUG', True)
 
     def __init__(self):
         options = webdriver.ChromeOptions()

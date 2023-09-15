@@ -1,5 +1,4 @@
 from .control import initialize_database, read_relevant_temperature, set_process, check_containers
-from os import getenv
 from hashlib import sha256
 from pathlib import Path
 from dotenv import dotenv_values
@@ -19,6 +18,7 @@ def run_lambda(event, context):
     if got_event:
         event = got_event
     logging.info(f'{event}')
+    print(event)
     if event:
         key_1 = event.get('key_1', None)
         key_2 = event.get('key_2', None)

@@ -99,16 +99,6 @@ def clear_table(table_name: str):
         delete_connection.commit()
 
 
-def insert_into_db(data: dict, table_name: str):
-    value_keys = tuple(data.keys())
-    insert_data = [data[key] for key in value_keys]
-    insert_query = f"INSERT INTO {table_name} {str(value_keys)} VALUES ({str('?, '*len(value_keys))[:-2]})"
-    insert_connection, insert_cursor = db_connection_and_cursor()
-    with insert_cursor:
-        insert_cursor.execute(insert_query, insert_data)
-        insert_connection.commit()
-
-
 def update_status_in_db(update_object: Union[Task, Set]):
     insert_connection, insert_cursor = db_connection_and_cursor()
     update_query = f"""

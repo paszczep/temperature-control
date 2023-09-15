@@ -13,7 +13,7 @@ class Read:
 
 
 @dataclass
-class TaskReads:
+class TaskRead:
     __tablename__ = 'task_reads'
     task_id: str
     read_id: str
