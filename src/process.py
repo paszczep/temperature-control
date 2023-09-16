@@ -67,12 +67,13 @@ def read_relevant_temperature(task_id: str) -> list[Read]:
         return thermometer_ids
 
     def read_relevant_thermometers() -> list[Measure]:
+        print(select_from_db(ContainerTask.__tablename__))
         relationships = [ContainerTask(**rel) for rel in select_from_db(ContainerTask.__tablename__)]
         container = [rel.container_id for rel in relationships if rel.task_id == task_id].pop()
         relevant_ids = relevant_thermometer_ids(container)
         return [t for t in read_all_thermometers() if t.device_id in relevant_ids]
 
-    def insert_reads_into_db(insert_thermometers) -> list[Read]:
+    def insert_reads_into_db(insert_thermometers: list[Measure]) -> list[Read]:
         insert_thermometer_reads = [Read(
                 id=str(uuid4()),
                 thermometer=t.device_id,
@@ -127,6 +128,12 @@ def set_process(set_id: str):
         ) for c in check_ctrls]
         insert_multiple_objects_into_db(created_checks, Check.__tablename__)
 
+    def create_set_control_relationship(performed_set_control: Control, related_set: Set):
+        performed_control_relationship = SetControl(
+            control_id=performed_set_control.id,
+            set_id=related_set.id)
+        insert_one_object_into_db(performed_control_relationship, SetControl.__tablename__)
+
     def create_control(control_temperature: str) -> Control:
         control = Control(
             id=str(uuid4()),
@@ -134,12 +141,6 @@ def set_process(set_id: str):
             target_setpoint=control_temperature)
         insert_one_object_into_db(control, Control.__tablename__)
         return control
-
-    def create_set_control_relationship(performed_set_control: Control, performed_set: Set):
-        performed_control_relationship = SetControl(
-            control_id=performed_set_control.id,
-            set_id=performed_set.id)
-        insert_one_object_into_db(performed_control_relationship, SetControl.__tablename__)
 
     def driver_check_containers_and_execute_set(container_name: str, temp_setting: str) -> list[Ctrl]:
         return ContainerSettingsDriver().check_containers_and_set_temperature(
@@ -152,7 +153,7 @@ def set_process(set_id: str):
 
     performed_set = get_performed_set()
     logging.info(f'{performed_set.status}')
-    print(f'{performed_set.status}')
+    print(f'performed set status {performed_set.status}')
     if performed_set.status == 'running':
         set_container_relationship = get_set_container_relationship()
 
@@ -183,8 +184,8 @@ def task_process(task_id: str):
             table_name=ContainerTask.__tablename__, where_condition={'task_id': task_id})].pop()
 
     if performed_task.status == 'cancelled':
-        delete_from_table(Task.__tablename__, where={'id': performed_task.id})
-        delete_from_table(ContainerSet.__tablename__, where={'task_id': task_id})
+        performed_task.status = 'ended'
+        update_status_in_db(performed_task)
 
     if performed_task.status == 'running':
         reads = read_relevant_temperature(task_id)
