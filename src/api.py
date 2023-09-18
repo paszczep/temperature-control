@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from random import choice
+from typing import Union
 
 
 @dataclass
@@ -112,3 +113,13 @@ class ContainerSet:
     __tablename__ = 'container_set'
     container_id: str
     set_id: str
+
+
+data_objects = [ContainerTask, ContainerSet, Check, Control,
+                Read,
+                Task,
+                TaskRead,
+                TaskControl,
+                Set,
+                SetControl]
+

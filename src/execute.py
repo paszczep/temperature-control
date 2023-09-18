@@ -17,7 +17,6 @@ def run_lambda(event, context):
     got_event = event.get('queryStringParameters')
     if got_event:
         event = got_event
-    logging.info(f'{event}')
     if event:
         key_1 = event.get('key_1', None)
         key_2 = event.get('key_2', None)
@@ -28,11 +27,15 @@ def run_lambda(event, context):
 
         if key_1 == key_hash(env_values.get('KEY_1')) and key_2 == env_values.get('KEY_2'):
             if initialize:
+                logging.info(f'initializing database')
                 initialize_database()
             elif task:
+                logging.info(f'running task')
                 read_relevant_temperature(task_id=task)
             elif setting:
+                logging.info(f'running setting')
                 set_process(set_id=setting)
             elif check:
+                logging.info(f'just checking')
                 check_containers()
     return event
