@@ -11,7 +11,8 @@ from typing import Union
 import sys
 
 logging.basicConfig(
-    stream=sys.stdout, level=logging.DEBUG,
+    stream=sys.stdout,
+    level=logging.disable(),
     format='%(asctime)s: %(message)s'
 )
 
@@ -227,27 +228,22 @@ def task_process(task_id: str):
         return bool(age_timestamp > time.time() - 60*minutes)
 
     def retrieve_container_check(checked_container_id: str) -> Union[Check, None]:
-        select_checks = select_from_db(
+        if (select_checks := select_from_db(
                             table_name=Check.__tablename__,
                             where_equals={'container': checked_container_id},
-                            return_keys=True)
-        if select_checks:
-            existing_checks = [Check(**check) for check in select_checks]
-            checks_refresh = max(ch.timestamp for ch in existing_checks if is_younger_than(ch.timestamp))
-            return [c for c in existing_checks if c.timestamp == checks_refresh].pop() if checks_refresh else None
+                            return_keys=True)):
+            existing_check = [
+                (checking := Check(**check)) for check in select_checks if is_younger_than(checking.timestamp)]
+            return existing_check.pop() if existing_check else None
 
     def measure_temperature_and_decide(existing_check: Check):
         what_controls = retrieve_which_controls()
         what_reads = retrieve_which_reads()
-
         controls_retrieved = retrieve_relevant_controls(what_controls)
         reads_retrieved = select_from_db(Read.__tablename__, where_in={"read_id": what_reads})
-
         reads_measured = read_relevant_temperature(task_id)
-
         temperatures = [t.temperature for t in reads_measured]
-
-        print(existing_check, task_container_name, temperatures, performed_task, controls_retrieved, reads_retrieved)
+        return existing_check, task_container_name, temperatures, performed_task, controls_retrieved, reads_retrieved
 
     performed_task = get_processed_task()
     task_container_name = get_related_container().container_id
