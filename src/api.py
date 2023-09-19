@@ -1,16 +1,35 @@
 from dataclasses import dataclass, field
 from random import choice
 from typing import Union
+from decimal import Decimal
+from datetime import datetime
+import pytz
+from .database import select_from_db
+import logging
 
 
 @dataclass
-class Read:
+class Reading:
     __tablename__ = 'read'
     id: str
-    temperature: str
-    read_time: str
+    temperature: Union[str, Decimal]
+    read_time: Union[str, int]
     db_time: int
     thermometer: str
+
+
+def use_read(read_read: Reading) -> Reading:
+    datetime_read = datetime.strptime(read_read.read_time, '%d/%m/%y %H:%M:%S')
+    read_timezone = pytz.timezone('Europe/Berlin')
+    datetime_local = read_timezone.localize(datetime_read)
+    return Reading(
+        id=read_read.id,
+        temperature=Decimal(read_read.temperature[:-2]),
+        read_time=int(datetime_local.timestamp()),
+        db_time=read_read.db_time,
+        thermometer=read_read.thermometer)
+
+
 
 
 @dataclass
@@ -99,6 +118,12 @@ class ContainerTask:
     task_id: str
 
 
+def get_related_container(task_id: str) -> ContainerTask:
+    logging.info('fetching processed container')
+    return [ContainerTask(**c) for c in select_from_db(
+        table_name=ContainerTask.__tablename__, where_equals={'task_id': task_id})].pop()
+
+
 @dataclass
 class Set:
     __tablename__ = 'temp_set'
@@ -116,7 +141,7 @@ class ContainerSet:
 
 
 data_objects = [ContainerTask, ContainerSet, Check, Control,
-                Read,
+                Reading,
                 Task,
                 TaskRead,
                 TaskControl,

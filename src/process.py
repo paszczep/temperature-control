@@ -2,10 +2,11 @@ from .drive import ContainerValuesDriver, ContainerSettingsDriver, Ctrl
 from .measure import read_all_thermometers, Measure
 from .database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db, \
     insert_one_object_into_db
-from .api import Container, Check, Control, ContainerSet, ContainerThermometer, ContainerTask, Thermometer, Read, \
-    TaskRead, Task, Set, SetControl, TaskControl, data_objects
+from .api import Container, Check, Control, ContainerSet, ContainerThermometer, ContainerTask, Thermometer, Reading, \
+    TaskRead, Task, Set, SetControl, TaskControl, data_objects, use_read
 from uuid import uuid4
 import logging
+from decimal import Decimal
 import time
 from typing import Union
 import sys
@@ -59,7 +60,7 @@ def initialize_database():
     insert_thermometers()
 
 
-def read_relevant_temperature(task_id: str) -> list[Read]:
+def read_relevant_temperature(task_id: str) -> list[Reading]:
     def relevant_thermometer_ids(the_container_id: str) -> list[str]:
         logging.info('fetching relevant thermometer ids')
         device_relationships = [
@@ -74,16 +75,16 @@ def read_relevant_temperature(task_id: str) -> list[Read]:
         relevant_ids = relevant_thermometer_ids(container)
         return [t for t in read_all_thermometers() if t.device_id in relevant_ids]
 
-    def insert_reads_into_db(insert_thermometers: list[Measure]) -> list[Read]:
+    def insert_reads_into_db(insert_thermometers: list[Measure]) -> list[Reading]:
         logging.info('saving read temperatures')
-        insert_thermometer_reads = [Read(
+        insert_thermometer_reads = [Reading(
             id=str(uuid4()),
             thermometer=t.device_id,
             temperature=t.temperature,
             read_time=t.measure_time,
             db_time=t.database_time)
             for t in insert_thermometers]
-        insert_multiple_objects_into_db(insert_thermometer_reads, Read.__tablename__)
+        insert_multiple_objects_into_db(insert_thermometer_reads, Reading.__tablename__)
         relation_data = [TaskRead(read_id=read.id, task_id=task_id) for read in insert_thermometer_reads]
         insert_multiple_objects_into_db(relation_data, TaskRead.__tablename__)
         return insert_thermometer_reads
@@ -113,6 +114,16 @@ def create_and_save_checks(check_ctrls: list[Ctrl]) -> list[Check]:
     return created_checks
 
 
+def create_and_save_control(control_temperature: str) -> Control:
+    logging.info('saving control')
+    control = Control(
+        id=str(uuid4()),
+        timestamp=int(time.time()),
+        target_setpoint=control_temperature)
+    insert_one_object_into_db(control, Control.__tablename__)
+    return control
+
+
 def set_process(set_id: str):
     def get_performed_set() -> Set:
         logging.info('fetching setting parameters for execution')
@@ -129,15 +140,6 @@ def set_process(set_id: str):
             control_id=performed_set_control.id,
             set_id=related_set.id)
         insert_one_object_into_db(performed_control_relationship, SetControl.__tablename__)
-
-    def create_control(control_temperature: str) -> Control:
-        logging.info('saving control')
-        control = Control(
-            id=str(uuid4()),
-            timestamp=int(time.time()),
-            target_setpoint=control_temperature)
-        insert_one_object_into_db(control, Control.__tablename__)
-        return control
 
     def end_set(finnish_set: Set):
         logging.info('ending setting')
@@ -162,7 +164,7 @@ def set_process(set_id: str):
             container_name=set_container_pairing.container_id,
             temp_setting=(set_temperature := f'{str(go_set.temperature)}.0'))
         create_and_save_checks(container_controls)
-        performed_control = create_control(set_temperature)
+        performed_control = create_and_save_control(set_temperature)
         create_set_control_pairing(performed_control, go_set)
         setting_ctrl = get_setting_control(container_controls, set_container_pairing)
         if setting_ctrl.setpoint == set_temperature:
@@ -197,10 +199,6 @@ def task_process(task_id: str):
         ended_task.status = 'ended'
         update_status_in_db(ended_task)
 
-    def retrieve_which_reads() -> list[str]:
-        logging.info('establishing relevant reads')
-        return select_from_db(TaskRead.__tablename__, ['read_id'], where_equals={'task_id': task_id}, return_keys=False)
-
     def retrieve_which_controls() -> list[str]:
         logging.info('establishing relevant controls')
         return select_from_db(table_name=TaskControl.__tablename__,
@@ -213,11 +211,13 @@ def task_process(task_id: str):
         return [Control(**control) for control in
                 select_from_db(Control.__tablename__, where_in={'id': control_ids}, return_keys=True)]
 
-    def driver_set_temperature(temperature_setting: int) -> list[Ctrl]:
+    def driver_set_go_save_checks_and_control(temperature_setting: int):
         logging.info(f'initiating driver to set {str(temperature_setting)}')
-        return driver_check_and_introduce_setting(
-                container_name=task_container_name,
-                temp_setting=str(temperature_setting))
+        driver_checks = driver_check_and_introduce_setting(
+            container_name=task_container_name,
+            temp_setting=(temperature_setting := f'{str(temperature_setting)}.0'))
+        create_and_save_checks(driver_checks)
+        create_and_save_control(temperature_setting)
 
     def get_related_container() -> ContainerTask:
         logging.info('fetching processed container')
@@ -225,7 +225,7 @@ def task_process(task_id: str):
             table_name=ContainerTask.__tablename__, where_equals={'task_id': task_id})].pop()
 
     def is_younger_than(age_timestamp: int, minutes: int = 15) -> bool:
-        return bool(age_timestamp > time.time() - 60*minutes)
+        return bool(age_timestamp > (time.time() - 60*minutes))
 
     def retrieve_container_check(checked_container_id: str) -> Union[Check, None]:
         if (select_checks := select_from_db(
@@ -236,14 +236,39 @@ def task_process(task_id: str):
                 (checking := Check(**check)) for check in select_checks if is_younger_than(checking.timestamp)]
             return existing_check.pop() if existing_check else None
 
+    def begin_task():
+        return driver_set_go_save_checks_and_control(temperature_setting=performed_task.t_start)
+
+    def retrieve_relevant_reads() -> list[Reading]:
+        what_reads = select_from_db(
+            TaskRead.__tablename__, ['read_id'], where_equals={'task_id': task_id}, return_keys=False)
+        return [use_read(Reading(**r)) for r in
+                select_from_db(Reading.__tablename__, where_in={"read_id": what_reads}, return_keys=True)]
+
+    def measure_relevant_reads() -> list[Reading]:
+        read_all = [use_read(r) for r in read_relevant_temperature(task_id)]
+        read_valid = [r for r in read_all if is_younger_than(r.read_time)]
+        return read_valid
+
+    def get_recent_controlled_setting(retrieved_controls: list[Control]) -> Decimal:
+        recent_timestamp = max(c.timestamp for c in retrieved_controls)
+        recent_controlled_setting = [
+            c.target_setpoint for c in retrieved_controls if c.timestamp == recent_timestamp].pop()
+        return Decimal(recent_controlled_setting)
+
     def measure_temperature_and_decide(existing_check: Check):
-        what_controls = retrieve_which_controls()
-        what_reads = retrieve_which_reads()
-        controls_retrieved = retrieve_relevant_controls(what_controls)
-        reads_retrieved = select_from_db(Read.__tablename__, where_in={"read_id": what_reads})
-        reads_measured = read_relevant_temperature(task_id)
-        temperatures = [t.temperature for t in reads_measured]
-        return existing_check, task_container_name, temperatures, performed_task, controls_retrieved, reads_retrieved
+        what_control_ids = retrieve_which_controls()
+        if not what_control_ids:
+            begin_task()
+
+        retrieved_controls = retrieve_relevant_controls(what_control_ids)
+        recent_setting = get_recent_controlled_setting(retrieved_controls)
+
+        retrieved_reads = retrieve_relevant_reads()
+        measured_reads = measure_relevant_reads()
+        all_temperatures = [t.temperature for t in measured_reads + retrieved_reads]
+
+        return existing_check, task_container_name, all_temperatures, performed_task, retrieved_controls, retrieved_reads
 
     performed_task = get_processed_task()
     task_container_name = get_related_container().container_id
@@ -256,8 +281,7 @@ def task_process(task_id: str):
         container_check = retrieve_container_check(task_container_name)
 
         if not container_check and is_younger_than(performed_task.start):
-            driver_controls = ContainerValuesDriver().read_values()
-            create_and_save_checks(driver_controls)
+            begin_task()
         elif container_check:
             measure_temperature_and_decide(container_check)
 
