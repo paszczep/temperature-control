@@ -30,9 +30,7 @@ def use_read(read_read: Reading) -> Reading:
         thermometer=read_read.thermometer)
 
 
-
-
-@dataclass
+@dataclass(frozen=True)
 class TaskRead:
     __tablename__ = 'task_reads'
     task_id: str
@@ -47,7 +45,7 @@ class Thermometer:
     device_name: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContainerThermometer:
     __tablename__ = "container_thermometers"
     container_id: str
@@ -84,14 +82,14 @@ class Check:
     read_setpoint: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class TaskControl:
     __tablename__ = "task_controls"
     task_id: str
     control_id: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class SetControl:
     __tablename__ = "set_controls"
     set_id: str
@@ -111,7 +109,7 @@ class Task:
     status: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContainerTask:
     __tablename__ = 'container_task'
     container_id: str
@@ -133,7 +131,7 @@ class Set:
     timestamp: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class ContainerSet:
     __tablename__ = 'container_set'
     container_id: str

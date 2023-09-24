@@ -2,6 +2,7 @@ from typing import Union
 from psycopg2 import connect
 from .api import Set, Task
 from pathlib import Path
+from time import time
 from dotenv import dotenv_values
 from psycopg2.extras import execute_values
 import logging
