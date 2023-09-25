@@ -2,7 +2,6 @@ from typing import Union
 from psycopg2 import connect
 from .api import Set, Task
 from pathlib import Path
-from time import time
 from dotenv import dotenv_values
 from psycopg2.extras import execute_values
 import logging
@@ -35,7 +34,7 @@ def select_from_db(
         columns: Union[list, None] = None,
         where_equals: Union[dict[str, str], None] = None,
         where_in: Union[dict[str, list], None] = None,
-        return_keys: bool = True
+        keys: bool = True
 ) -> Union[list, list[dict]]:
 
     def col_str(select_columns: list):
@@ -59,12 +58,13 @@ def select_from_db(
     with select_cursor:
         select_cursor.execute(select_query)
         values = select_cursor.fetchall()
-        logging.info(f'selected {len(values)} rows from db')
-        if not return_keys:
-            return [val[0] for val in values]
-        names = [description[0] for description in select_cursor.description]
-        keyed_values = [dict(zip(names, row)) for row in values]
-    return keyed_values
+        if not keys:
+            return_values = [val[0] for val in values]
+        elif keys:
+            names = [description[0] for description in select_cursor.description]
+            return_values = [dict(zip(names, row)) for row in values]
+
+    return return_values
 
 
 def insert_many_notes(cur):

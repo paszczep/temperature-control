@@ -1,4 +1,4 @@
-from .process import initialize_database, read_relevant_temperature, set_process, check_containers
+from .process import initialize_database, read_relevant_temperature, set_process, check_containers, task_process
 from hashlib import sha256
 from pathlib import Path
 from dotenv import dotenv_values
@@ -31,7 +31,7 @@ def run_lambda(event, context):
                 initialize_database()
             elif task:
                 logging.info(f'running task')
-                read_relevant_temperature(task_id=task)
+                task_process(task_id=task)
             elif setting:
                 logging.info(f'running setting')
                 set_process(set_id=setting)

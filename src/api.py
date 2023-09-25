@@ -4,8 +4,6 @@ from typing import Union
 from decimal import Decimal
 from datetime import datetime
 import pytz
-from .database import select_from_db
-import logging
 
 
 @dataclass
@@ -114,12 +112,6 @@ class ContainerTask:
     __tablename__ = 'container_task'
     container_id: str
     task_id: str
-
-
-def get_related_container(task_id: str) -> ContainerTask:
-    logging.info('fetching processed container')
-    return [ContainerTask(**c) for c in select_from_db(
-        table_name=ContainerTask.__tablename__, where_equals={'task_id': task_id})].pop()
 
 
 @dataclass

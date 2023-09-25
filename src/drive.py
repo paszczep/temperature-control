@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from dotenv import dotenv_values
 import logging
+from typing import Union
 
 
 dotenv_path = Path(__file__).parent.parent / '.env'
@@ -131,6 +132,10 @@ class ContainerValuesDriver(_ContainerDriver):
         return container_data
 
 
+class ExecuteButtonError(Exception):
+    pass
+
+
 class ContainerSettingsDriver(ContainerValuesDriver):
     def _open_container_commands(self, container_name: str):
         self.wait_for_element_and_click((By.XPATH, f"//*[contains(text(), '{container_name}')]"))
@@ -162,6 +167,18 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         if container_check.setpoint != temperature:
             self._temperature_setting_action(container, temperature)
         return check_values
+
+    def check_containers_and_set_temperature0(self, container: str, temperature: str) -> list[Ctrl]:
+        self.sign_in()
+        try:
+            read_settings = self._temperature_check_and_setting(container, temperature)
+        except Exception as ex:
+            logging.warning(f"{ex}")
+            raise ExecuteButtonError
+        else:
+            return read_settings
+        finally:
+            self.driver.close()
 
     def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[Ctrl]:
         self.sign_in()

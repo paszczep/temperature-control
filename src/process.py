@@ -1,4 +1,4 @@
-from .drive import ContainerValuesDriver, ContainerSettingsDriver, Ctrl
+from .drive import ContainerValuesDriver, ContainerSettingsDriver, Ctrl, ExecuteButtonError
 from .measure import read_all_thermometers, Measure
 from .database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db, \
     insert_one_object_into_db
@@ -12,8 +12,8 @@ from typing import Union
 import sys
 
 logging.basicConfig(
-    stream=sys.stdout,
-    level=logging.disable(),
+    # stream=sys.stdout,
+    level=logging.DEBUG,
     format='%(asctime)s: %(message)s'
 )
 
@@ -216,9 +216,10 @@ def task_process(task_id: str):
         return select_from_db(table_name=TaskControl.__tablename__,
                               columns=['control_id'],
                               where_equals={'task_id': task_id},
-                              return_keys=False)
+                              keys=False)
 
     def check_for_control_errors(checked_controls: list[Control]):
+        logging.info('checking for errors')
         points = [c.target_setpoint for c in checked_controls]
         if len(points) >= 3:
             for i in range(len(points)):
@@ -229,7 +230,7 @@ def task_process(task_id: str):
         logging.info('retrieving relevant controls')
         all_task_controls = [
             Control(**control) for control in
-            select_from_db(Control.__tablename__, where_in={'id': control_ids}, return_keys=True)]
+            select_from_db(Control.__tablename__, where_in={'id': control_ids}, keys=True)]
         check_for_control_errors(all_task_controls)
         recent_timestamp = max(c.timestamp for c in all_task_controls)
         recent_temperature_control = [
@@ -246,26 +247,22 @@ def task_process(task_id: str):
         return bool(age_timestamp > (time.time() - 60*minutes))
 
     def retrieve_check_temperature(checked_container_id: str) -> Union[Decimal, None]:
-        if (select_checks := select_from_db(
+        logging.info('retrieving check temperature')
+        select_checks = select_from_db(
                             table_name=Check.__tablename__,
                             where_equals={'container': checked_container_id},
-                            return_keys=True)):
-            existing_check = [
-                (checking := Check(**check)) for check in select_checks if is_younger_than(checking.timestamp)]
-            return Decimal(existing_check.pop().read_setpoint) if existing_check else None
+                            keys=True)
+        if select_checks:
+            existing_check = [Check(**check) for check in select_checks].pop()
+            if is_younger_than(existing_check.timestamp):
+                return Decimal(existing_check.read_setpoint)
 
     def begin_task():
+        logging.info('setting start temperature')
         return driver_set_go_save_checks_and_control(temperature_setting=running_task.t_start)
 
-    def retrieve_past_temperatures(_task_id: str) -> list[Decimal]:
-        what_reads = select_from_db(
-            TaskRead.__tablename__, ['read_id'], where_equals={'task_id': _task_id}, return_keys=False)
-        temperature_reads = [
-            use_read(Reading(**r)).temperature for r in
-            select_from_db(Reading.__tablename__, where_in={"read_id": what_reads}, return_keys=True)]
-        return temperature_reads
-
     def measure_temperature() -> list[Decimal]:
+        logging.info('measuring temperature')
         read_all = [use_read(r) for r in read_relevant_temperature(task_id)]
         read_valid = [Decimal(r.temperature[:-2]) for r in read_all if is_younger_than(r.read_time)]
         return read_valid
@@ -291,15 +288,28 @@ def task_process(task_id: str):
 
         what_control_ids = retrieve_which_controls()
         if not what_control_ids:
+            logging.info('beginning task')
             begin_task()
         else:
             control_temperature = retrieve_recent_control_temperature(what_control_ids)
             if control_temperature == running_task.t_start:
+                logging.info('retry t start')
                 preheat()
             elif control_temperature != existing_check_temperature:
                 driver_set_go_save_checks_and_control(int(control_temperature))
             else:
                 measure_and_decide()
+
+    def error_task(bad_task: Task):
+        bad_task.status = 'error'
+        update_status_in_db(bad_task)
+
+    def run_task():
+        check_temperature = retrieve_check_temperature(task_container_name)
+        if not check_temperature and is_younger_than(running_task.start):
+            begin_task()
+        elif check_temperature:
+            initiate_or_continue(check_temperature)
 
     running_task = get_processed_task()
     task_container_name = get_related_container_name()
@@ -307,15 +317,13 @@ def task_process(task_id: str):
     if running_task.status == 'cancelled':
         end_task(running_task)
     if running_task.status == 'running':
-        check_temperature = retrieve_check_temperature(task_container_name)
-        if not check_temperature and is_younger_than(running_task.start):
-            begin_task()
-        elif check_temperature:
-            try:
-                initiate_or_continue(check_temperature)
-            except InvalidSettingRetry:
-                running_task.status = 'error'
-                update_status_in_db(running_task)
+        run_task()
+        # try:
+        #     run_task()
+        # except Exception as ex:
+        #     logging.warning(f'{ex}')
+        #     error_task(running_task)
+        #     return ex
 
 
 def check_containers():
