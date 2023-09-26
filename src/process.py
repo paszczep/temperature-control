@@ -12,7 +12,7 @@ from typing import Union
 import sys
 
 logging.basicConfig(
-    # stream=sys.stdout,
+    stream=sys.stdout,
     level=logging.DEBUG,
     format='%(asctime)s: %(message)s'
 )
@@ -181,11 +181,20 @@ def set_process(set_id: str):
 
 
 class InvalidSettingRetry(Exception):
-    pass
+    def __init__(self, message="Retried setting to no effect"):
+        self.message = message
+        super().__init__(self.message)
 
 
 def task_process(task_id: str):
     logging.info('processing task')
+
+    def create_task_control_pairing(performed_task_control: Control, related_task_id: str):
+        logging.info('pairing setting with created control')
+        performed_control_relationship = TaskControl(
+            control_id=performed_task_control.id,
+            task_id=related_task_id)
+        insert_one_object_into_db(performed_control_relationship, TaskControl.__tablename__)
 
     def driver_check_and_introduce_setting(container_name: str, temp_setting: str) -> list[Ctrl]:
         logging.info(f'launching webdriver to set {temp_setting} in {container_name}')
@@ -199,7 +208,8 @@ def task_process(task_id: str):
             container_name=task_container_name,
             temp_setting=(temperature_setting := f'{str(temperature_setting)}.0'))
         create_and_save_checks(driver_checks)
-        create_and_save_control(temperature_setting)
+        performed_control = create_and_save_control(temperature_setting)
+        create_task_control_pairing(performed_control, task_id)
 
     def end_task(ended_task: Task):
         logging.info('ending task')
@@ -313,17 +323,16 @@ def task_process(task_id: str):
 
     running_task = get_processed_task()
     task_container_name = get_related_container_name()
-
-    if running_task.status == 'cancelled':
-        end_task(running_task)
+    #
+    # if running_task.status == 'cancelled':
+    #     end_task(running_task)
     if running_task.status == 'running':
-        run_task()
-        # try:
-        #     run_task()
-        # except Exception as ex:
-        #     logging.warning(f'{ex}')
-        #     error_task(running_task)
-        #     return ex
+        # run_task()
+        try:
+            run_task()
+        except (InvalidSettingRetry, ExecuteButtonError) as ex:
+            logging.warning(f'{ex}')
+            error_task(running_task)
 
 
 def check_containers():

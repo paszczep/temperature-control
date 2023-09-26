@@ -48,7 +48,8 @@ def select_from_db(
         if where_equals:
             return f" WHERE {list(where_equals.keys())[0]} = '{list(where_equals.values())[0]}'"
         elif where_in:
-            return f" WHERE {list(where_in.keys())[0]} IN {str(set(where_equals.values()))}"
+            id_listing = str(tuple(list(where_in.values())[0])).replace(",)", ")")
+            return f" WHERE {list(where_in.keys())[0]} IN {id_listing}"
         else:
             return ''
 

@@ -133,7 +133,9 @@ class ContainerValuesDriver(_ContainerDriver):
 
 
 class ExecuteButtonError(Exception):
-    pass
+    def __init__(self, message):
+        self.message = message
+        super().__init__(self.message)
 
 
 class ContainerSettingsDriver(ContainerValuesDriver):
@@ -174,7 +176,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
             read_settings = self._temperature_check_and_setting(container, temperature)
         except Exception as ex:
             logging.warning(f"{ex}")
-            raise ExecuteButtonError
+            raise ExecuteButtonError(ex)
         else:
             return read_settings
         finally:
