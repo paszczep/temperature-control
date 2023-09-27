@@ -18,4 +18,5 @@ COPY .env ./
 COPY requirements.txt ./
 RUN pip install -r requirements.txt
 RUN rm requirements.txt
-CMD [ "src.run.handler" ]
+WORKDIR /var/task
+CMD ["src.run.handler"]

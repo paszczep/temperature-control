@@ -11,6 +11,7 @@ from dotenv import dotenv_values
 import logging
 from typing import Union
 
+logger = logging.getLogger()
 
 dotenv_path = Path(__file__).parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
@@ -31,7 +32,7 @@ class _ContainerDriver:
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
     password = env_values['CONTROL_PASSWORD']
-    debug = env_values.get('DEBUG', True)
+    debug = False
 
     def __init__(self):
         options = webdriver.ChromeOptions()
@@ -70,12 +71,14 @@ class _ContainerDriver:
         input_field.send_keys(input_value)
 
     def click_not_now(self):
+        logger.info('not now refresh password')
         try:
             self.wait_for_element_and_click((By.ID, 'btn_notnow'))
         except TimeoutException:
             pass
 
     def sign_in(self):
+        logger.info('signing in!')
         self.driver.get(self.url)
         sign_in_button = self.wait_for_element_visibility((By.CSS_SELECTOR, 'button.btn.btn-primary'))
         self.find_and_fill_input('Username', self.login)
@@ -86,6 +89,7 @@ class _ContainerDriver:
 
 class ContainerValuesDriver(_ContainerDriver):
     def _read_container_names(self) -> list:
+        logging.info('reading container names')
         container_label_keys = (By.CSS_SELECTOR, "span.emerson-menu-cursor.emerson-container-item-label")
         self.wait_for_element_visibility(container_label_keys)
         item_labels = self.driver.find_elements(*container_label_keys)
@@ -93,6 +97,7 @@ class ContainerValuesDriver(_ContainerDriver):
         return name_elements
 
     def _read_container_values(self) -> list:
+        logging.info('reading container values')
         values_table = self.driver.find_elements(By.CSS_SELECTOR, "table.k-selectable")[-1]
         invisible_cells = values_table.find_elements(By.XPATH, "//td[@style='display:none']")
         all_cells = values_table.find_elements(By.XPATH, "//td[@role='gridcell']")
@@ -120,12 +125,14 @@ class ContainerValuesDriver(_ContainerDriver):
         return all_data
 
     def container_values_reading_action(self) -> list[Ctrl]:
+        logger.info('reading container data')
         names = self._read_container_names()
         values = self._read_container_values()
         container_data = self._parse_value_table(names, values)
         return container_data
 
     def read_values(self) -> list[Ctrl]:
+        logger.info('reading container values process start')
         self.sign_in()
         container_data = self.container_values_reading_action()
         self.driver.close()
@@ -134,6 +141,7 @@ class ContainerValuesDriver(_ContainerDriver):
 
 class ExecuteButtonError(Exception):
     def __init__(self, message):
+        logger.warning('execute button error')
         self.message = message
         super().__init__(self.message)
 
@@ -145,15 +153,20 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
 
     def _open_temperature_setting_modal(self):
+        logger.info('opening settings modal')
         sleep(self.wait_time/2)
         execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
         execute_button.click()
 
     def _enter_temperature_setting(self, temperature_set_point: str):
+        logger.info('entering temperature setting')
         self.find_and_fill_input('Set point', temperature_set_point)
         if not self.debug:
             self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
+            logger.info('click! "Execute" button')
+            sleep(self.wait_time/2)
         else:
+            logging.info('debug mode, clicking "cancel"')
             commands_dialog = self.driver.find_elements(By.ID, 'commandsDialog')[0]
             commands_dialog.find_elements(By.CSS_SELECTOR, 'button.btn.btn-default')[0].click()
 
