@@ -18,9 +18,8 @@ db_config = {
     "password": env_values.get('DB_PASSWORD'),
     "port": env_values.get('DB_PORT')
 }
-
-db_connection = connect(**db_config)
 logging.info('initiated database connection')
+db_connection = connect(**db_config)
 
 
 def db_connection_and_cursor():

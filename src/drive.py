@@ -1,6 +1,7 @@
 from time import time, sleep
 from selenium import webdriver
-from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, ElementNotInteractableException
 from tempfile import mkdtemp
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -43,6 +44,7 @@ class _ContainerDriver:
         options.add_argument('--no-sandbox')
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280x1696")
+        options.add_argument("--start-maximized")
         options.add_argument("--single-process")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-dev-tools")
@@ -73,8 +75,8 @@ class _ContainerDriver:
     def click_not_now(self):
         logger.info('not now refresh password')
         try:
-            self.wait_for_element_and_click((By.ID, 'btn_notnow'))
-        except TimeoutException:
+            self.driver.find_element(By.ID, 'btn_notnow').click()
+        except NoSuchElementException:
             pass
 
     def sign_in(self):
@@ -139,7 +141,7 @@ class ContainerValuesDriver(_ContainerDriver):
         return container_data
 
 
-class ExecuteButtonError(Exception):
+class DriverExecuteError(Exception):
     def __init__(self, message):
         logger.warning('execute button error')
         self.message = message
@@ -154,7 +156,6 @@ class ContainerSettingsDriver(ContainerValuesDriver):
 
     def _open_temperature_setting_modal(self):
         logger.info('opening settings modal')
-        sleep(self.wait_time/2)
         execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
         execute_button.click()
 
@@ -164,14 +165,43 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         if not self.debug:
             self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
             logger.info('click! "Execute" button')
-            sleep(self.wait_time/2)
+            sleep(1)
         else:
             logging.info('debug mode, clicking "cancel"')
             commands_dialog = self.driver.find_elements(By.ID, 'commandsDialog')[0]
             commands_dialog.find_elements(By.CSS_SELECTOR, 'button.btn.btn-default')[0].click()
 
+    def _wait_for_commands_menu(self):
+        # loading_image = self.driver.find_element(By.CSS_SELECTOR, "div.k-loading-image")
+        # logging.info(f'{loading_image.get_attribute("outerHTML")}')
+        self.driver_wait().until(ec.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-image")))
+        sleep(self.wait_time*2)
+
+    def _cancel_previous_setting(self):
+        logger.info('attempted canceling previous setting')
+        commands_grid = self.driver.find_element(By.ID, "container-grid-detail-commands")
+        all_cancel_buttons = commands_grid.find_elements(By.CSS_SELECTOR, "a.k-grid-cancelCommand.k-button")
+        logger.info(f'all_cancel_buttons {len(all_cancel_buttons)}')
+        invisible_elements = commands_grid.find_elements(By.XPATH, "//*[@style='display: none;']")
+        logger.info(f'invisible_elements {len(invisible_elements)}')
+        cancel_buttons = [b for b in all_cancel_buttons if b not in invisible_elements]
+        logger.info(f'visible cancel buttons {len(cancel_buttons)}')
+        if cancel_buttons:
+            logger.info('canceling previous setting')
+            cancel_button = cancel_buttons.pop()
+            logger.info(f'click {cancel_button.text}')
+            cancel_button.click()
+            sleep(1)
+            sure_modal = self.driver.find_element(By.ID, 'confirmationDialog')
+            sure_ok_button = sure_modal.find_element(By.CSS_SELECTOR, "button.btn.btn-primary")
+            logger.info(f'click {sure_ok_button.text}')
+            ActionChains(self.driver).move_to_element(sure_ok_button).click(sure_ok_button).perform()
+            self._wait_for_commands_menu()
+
     def _temperature_setting_action(self, container: str, temperature: str):
         self._open_container_commands(container)
+        self._wait_for_commands_menu()
+        self._cancel_previous_setting()
         self._open_temperature_setting_modal()
         self._enter_temperature_setting(temperature)
 
@@ -189,7 +219,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
             read_settings = self._temperature_check_and_setting(container, temperature)
         except Exception as ex:
             logging.warning(f"{ex}")
-            raise ExecuteButtonError(ex)
+            raise DriverExecuteError(ex)
         else:
             return read_settings
         finally:

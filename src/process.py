@@ -1,4 +1,4 @@
-from .drive import ContainerValuesDriver, ContainerSettingsDriver, Ctrl, ExecuteButtonError
+from .drive import ContainerValuesDriver, ContainerSettingsDriver, Ctrl, DriverExecuteError
 from .measure import read_all_thermometers, Measure
 from .database import insert_multiple_objects_into_db, clear_table, select_from_db, update_status_in_db, \
     insert_one_object_into_db
@@ -9,13 +9,6 @@ import logging
 from decimal import Decimal
 import time
 from typing import Union
-import sys
-#
-# logging.basicConfig(
-#     stream=sys.stdout,
-#     level=logging.DEBUG,
-#     format='%(asctime)s: %(message)s'
-# )
 
 logger = logging.getLogger()
 
@@ -129,7 +122,11 @@ def create_and_save_control(control_temperature: str) -> Control:
 def set_process(set_id: str):
     def get_performed_set() -> Set:
         logger.info('fetching setting parameters for execution')
-        return [Set(**s) for s in select_from_db(table_name=Set.__tablename__, where_equals={'id': set_id})].pop()
+        select_sets = select_from_db(table_name=Set.__tablename__, where_equals={'id': set_id})
+        if select_sets:
+            return [Set(**s) for s in select_sets].pop()
+        else:
+            exit()
 
     def get_set_container_relationship() -> ContainerSet:
         logger.info('fetching target container')
@@ -178,9 +175,6 @@ def set_process(set_id: str):
     if performed_set.status == 'running':
         run_set(performed_set)
 
-    elif performed_set.status == 'cancelled':
-        end_set(performed_set)
-
 
 class InvalidSettingRetry(Exception):
     def __init__(self, message="Retried setting to no effect"):
@@ -212,11 +206,6 @@ def task_process(task_id: str):
         create_and_save_checks(driver_checks)
         performed_control = create_and_save_control(temperature_setting)
         create_task_control_pairing(performed_control, task_id)
-
-    def end_task(ended_task: Task):
-        logger.info('ending task')
-        ended_task.status = 'ended'
-        update_status_in_db(ended_task)
 
     def get_processed_task() -> Task:
         logger.info('fetching processed task')
@@ -330,7 +319,7 @@ def task_process(task_id: str):
     if running_task.status == 'running':
         try:
             run_task()
-        except (InvalidSettingRetry, ExecuteButtonError) as ex:
+        except (InvalidSettingRetry, DriverExecuteError) as ex:
             logging.warning(f'{ex}')
             error_task(running_task)
 
