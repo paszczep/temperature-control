@@ -174,8 +174,8 @@ class ContainerSettingsDriver(ContainerValuesDriver):
     def _wait_for_commands_menu(self):
         # loading_image = self.driver.find_element(By.CSS_SELECTOR, "div.k-loading-image")
         # logging.info(f'{loading_image.get_attribute("outerHTML")}')
-        self.driver_wait().until(ec.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-image")))
-        sleep(self.wait_time*2)
+        # self.driver_wait().until(ec.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-image")))
+        sleep(self.wait_time + 2)
 
     def _cancel_previous_setting(self):
         logger.info('attempted canceling previous setting')
@@ -191,8 +191,8 @@ class ContainerSettingsDriver(ContainerValuesDriver):
             cancel_button = cancel_buttons.pop()
             logger.info(f'click {cancel_button.text}')
             cancel_button.click()
-            sleep(1)
-            sure_modal = self.driver.find_element(By.ID, 'confirmationDialog')
+            # sleep(1)
+            sure_modal = self.wait_for_element_visibility((By.ID, 'confirmationDialog'))
             sure_ok_button = sure_modal.find_element(By.CSS_SELECTOR, "button.btn.btn-primary")
             logger.info(f'click {sure_ok_button.text}')
             ActionChains(self.driver).move_to_element(sure_ok_button).click(sure_ok_button).perform()
