@@ -1,6 +1,6 @@
 from .drive import ContainerSettingsDriver, Ctrl
 from .database import select_from_db, update_status_in_db, insert_one_object_into_db
-from .api import Control, ContainerSet, Set, SetControl
+from .api import Control, ContainerSet, Setting, SetControl
 from .checking import create_and_save_checks, create_and_save_control
 import logging
 
@@ -8,11 +8,11 @@ logger = logging.getLogger()
 
 
 def set_process(set_id: str):
-    def get_performed_set() -> Set:
+    def get_performed_set() -> Setting:
         logger.info('fetching setting parameters for execution')
-        select_sets = select_from_db(table_name=Set.__tablename__, where_equals={'id': set_id})
+        select_sets = select_from_db(table_name=Setting.__tablename__, where_equals={'id': set_id})
         if select_sets:
-            return [Set(**s) for s in select_sets].pop()
+            return [Setting(**s) for s in select_sets].pop()
         else:
             exit()
 
@@ -21,14 +21,14 @@ def set_process(set_id: str):
         return [ContainerSet(**c) for c in select_from_db(
             table_name=ContainerSet.__tablename__, where_equals={'set_id': set_id})].pop()
 
-    def create_set_control_pairing(performed_set_control: Control, related_set: Set):
+    def create_set_control_pairing(performed_set_control: Control, related_set: Setting):
         logger.info('pairing setting with created control')
         performed_control_relationship = SetControl(
             control_id=performed_set_control.id,
             set_id=related_set.id)
         insert_one_object_into_db(performed_control_relationship, SetControl.__tablename__)
 
-    def end_set(finnish_set: Set):
+    def end_set(finnish_set: Setting):
         logger.info('ending setting')
         finnish_set.status = 'ended'
         update_status_in_db(finnish_set)
@@ -37,7 +37,7 @@ def set_process(set_id: str):
         logger.info('fetching working temperature setting value for comparison')
         return [c for c in all_controls if c.name == pairing.container_id].pop()
 
-    def run_set(go_set: Set):
+    def run_set(go_set: Setting):
         logger.info('running setting of temperature')
 
         def driver_check_containers_and_execute_set(container_name: str, temp_setting: str) -> list[Ctrl]:

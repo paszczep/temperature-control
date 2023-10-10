@@ -9,6 +9,8 @@ logger = logging.getLogger()
 
 
 def read_relevant_temperature(task_id: str) -> list[Reading]:
+    logger.info('reading relevant temperature')
+
     def relevant_thermometer_ids(the_container_id: str) -> list[str]:
         logger.info('fetching relevant thermometer ids')
         device_relationships = [

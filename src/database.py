@@ -1,6 +1,6 @@
 from typing import Union
 from psycopg2 import connect
-from .api import Set, Task
+from .api import Setting, Tasking
 from pathlib import Path
 from dotenv import dotenv_values
 from psycopg2.extras import execute_values
@@ -10,7 +10,6 @@ import logging
 dotenv_path = Path(__file__).parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
-
 db_config = {
     "host": env_values.get('DB_HOST'),
     "dbname": env_values.get('DB_NAME'),
@@ -18,8 +17,9 @@ db_config = {
     "password": env_values.get('DB_PASSWORD'),
     "port": env_values.get('DB_PORT')
 }
-logging.info('initiated database connection')
+
 db_connection = connect(**db_config)
+logging.info('initiated database connection')
 
 
 def db_connection_and_cursor():
@@ -35,6 +35,7 @@ def select_from_db(
         where_in: Union[dict[str, list], None] = None,
         keys: bool = True
 ) -> Union[list, list[dict]]:
+    logging.info(f'db select from {table_name}')
 
     def col_str(select_columns: list):
         if not select_columns:
@@ -80,7 +81,8 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
     insert_query = f"""
-        INSERT INTO {table_name} {str(value_keys).replace("'", "")} VALUES ({str('%s, '*len(value_keys))[:-2]})"""
+        INSERT INTO {table_name} {str(value_keys).replace("'", "")} 
+        VALUES ({str('%s, '*len(value_keys))[:-2]})"""
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_cursor:
         insert_cursor.executemany(insert_query, insert_data)
@@ -88,11 +90,12 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
 
 
 def insert_one_object_into_db(data_object: object, table_name: str):
-    logging.info(f'inserting {type(data_object)} object into db')
+    logging.info(f'inserting object into {table_name}')
     value_keys = tuple(data_object.__annotations__.keys())
     insert_data = [data_object.__dict__[key] for key in value_keys]
     insert_query = f"""
-        INSERT INTO {table_name} {str(value_keys).replace("'", "")} VALUES ({str('%s, '*len(value_keys))[:-2]})"""
+        INSERT INTO {table_name} {str(value_keys).replace("'", "")} 
+        VALUES ({str('%s, '*len(value_keys))[:-2]})"""
     insert_connection, insert_cursor = db_connection_and_cursor()
     with insert_cursor:
         insert_cursor.execute(insert_query, insert_data)
@@ -108,11 +111,13 @@ def clear_table(table_name: str):
         delete_connection.commit()
 
 
-def update_status_in_db(update_object: Union[Task, Set]):
+def update_status_in_db(update_object: Union[Tasking, Setting]):
     logging.info(f'updating status in db to {update_object.status}')
     insert_connection, insert_cursor = db_connection_and_cursor()
     update_query = f"""
-        UPDATE {update_object.__tablename__} SET status='{update_object.status}' WHERE id='{update_object.id}'
+        UPDATE {update_object.__tablename__} 
+        SET status='{update_object.status}' 
+        WHERE id='{update_object.id}'
         """
     with insert_cursor:
         insert_cursor.execute(update_query)

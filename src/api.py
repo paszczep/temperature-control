@@ -7,7 +7,18 @@ import pytz
 
 
 @dataclass
-class Reading:
+class DataObject:
+    def get_log_info(self) -> str:
+        object_dict_without_id = {key: value for key, value in self.__dict__.items() if key != 'id'}
+        for key, value in object_dict_without_id.items():
+            if 'time' in key and type(value) == int:
+                object_dict_without_id[key] = datetime.strftime(
+                    datetime.fromtimestamp(value), "%Y-%m-%d %H:%M")
+        return str(object_dict_without_id)[1:-1].replace("'", "")
+
+
+@dataclass
+class Reading(DataObject):
     __tablename__ = 'read'
     id: str
     temperature: Union[str, Decimal]
@@ -50,7 +61,7 @@ class ContainerThermometer:
     thermometer_id: str
 
 
-labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna', 'Kazimierz', 'Marta', 'Fasola']
+labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna', 'Kazimierz', 'Marta', 'Fasola', 'Orzeszek', 'Rodzynek']
 
 
 @dataclass
@@ -61,7 +72,7 @@ class Container:
 
 
 @dataclass
-class Control:
+class Control(DataObject):
     __tablename__ = 'control'
     id: str
     timestamp: int
@@ -69,7 +80,7 @@ class Control:
 
 
 @dataclass
-class Check:
+class Check(DataObject):
     __tablename__ = 'container_check'
     id: str
     container: str
@@ -95,7 +106,7 @@ class SetControl:
 
 
 @dataclass
-class Task:
+class Tasking:
     __tablename__ = 'Task'
     id: str
     start: int
@@ -115,7 +126,7 @@ class ContainerTask:
 
 
 @dataclass
-class Set:
+class Setting:
     __tablename__ = 'temp_set'
     id: str
     status: str
@@ -130,11 +141,12 @@ class ContainerSet:
     set_id: str
 
 
-data_objects = [ContainerTask, ContainerSet, Check, Control,
+data_objects = [Check,
+                Control,
                 Reading,
-                Task,
+                Tasking,
                 TaskRead,
                 TaskControl,
-                Set,
+                Setting,
                 SetControl]
 

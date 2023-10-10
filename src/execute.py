@@ -16,10 +16,12 @@ def key_hash(key: str) -> str:
     return sha256(key.encode("utf-8")).hexdigest()
 
 
-def run_lambda(event, context):
-    got_event = event.get('queryStringParameters')
-    if got_event:
-        event = got_event
+def parse_event(event):
+    return event.get('queryStringParameters') or event
+
+
+def run_lambda(event, _):
+    event = parse_event(event)
     if event:
         key_1 = event.get('key_1', None)
         key_2 = event.get('key_2', None)

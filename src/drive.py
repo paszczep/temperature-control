@@ -1,7 +1,7 @@
 from time import time, sleep
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException, ElementNotInteractableException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
 from tempfile import mkdtemp
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from dotenv import dotenv_values
 import logging
-from typing import Union
 
 logger = logging.getLogger()
 
@@ -18,17 +17,7 @@ dotenv_path = Path(__file__).parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 
-@dataclass
-class Ctrl:
-    name: str
-    logged: str
-    received: str
-    power: str
-    setpoint: str
-    database_time: int
-
-
-class _ContainerDriver:
+class BrowserDriver:
     wait_time = 5
     url = env_values['CONTROL_URL']
     login = env_values['CONTROL_LOGIN']
@@ -67,6 +56,19 @@ class _ContainerDriver:
 
     def wait_for_element_visibility(self, *args):
         return self.driver_wait().until(ec.visibility_of_element_located(*args))
+
+
+@dataclass
+class Ctrl:
+    name: str
+    logged: str
+    received: str
+    power: str
+    setpoint: str
+    database_time: int
+
+
+class _ContainerDriver(BrowserDriver):
 
     def find_and_fill_input(self, field: str, input_value: str):
         input_field = self.wait_for_element_and_click((By.XPATH, f"//input[@placeholder='{field}']"))
@@ -149,7 +151,9 @@ class DriverExecuteError(Exception):
 
 
 class ContainerSettingsDriver(ContainerValuesDriver):
+
     def _open_container_commands(self, container_name: str):
+        logger.info('opening container commands')
         self.wait_for_element_and_click((By.XPATH, f"//*[contains(text(), '{container_name}')]"))
         self.wait_for_element_and_click((By.CSS_SELECTOR, 'div.k-icon.k-collapse-prev'))
         self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
@@ -175,55 +179,50 @@ class ContainerSettingsDriver(ContainerValuesDriver):
         # loading_image = self.driver.find_element(By.CSS_SELECTOR, "div.k-loading-image")
         # logging.info(f'{loading_image.get_attribute("outerHTML")}')
         # self.driver_wait().until(ec.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-image")))
-        sleep(self.wait_time + 2)
+        sleep(self.wait_time + 3)
 
     def _cancel_previous_setting(self):
         logger.info('attempted canceling previous setting')
         commands_grid = self.driver.find_element(By.ID, "container-grid-detail-commands")
         all_cancel_buttons = commands_grid.find_elements(By.CSS_SELECTOR, "a.k-grid-cancelCommand.k-button")
-        logger.info(f'all_cancel_buttons {len(all_cancel_buttons)}')
         invisible_elements = commands_grid.find_elements(By.XPATH, "//*[@style='display: none;']")
-        logger.info(f'invisible_elements {len(invisible_elements)}')
         cancel_buttons = [b for b in all_cancel_buttons if b not in invisible_elements]
-        logger.info(f'visible cancel buttons {len(cancel_buttons)}')
         if cancel_buttons:
             logger.info('canceling previous setting')
             cancel_button = cancel_buttons.pop()
             logger.info(f'click {cancel_button.text}')
             cancel_button.click()
-            # sleep(1)
+            sleep(1)
             sure_modal = self.wait_for_element_visibility((By.ID, 'confirmationDialog'))
             sure_ok_button = sure_modal.find_element(By.CSS_SELECTOR, "button.btn.btn-primary")
             logger.info(f'click {sure_ok_button.text}')
             ActionChains(self.driver).move_to_element(sure_ok_button).click(sure_ok_button).perform()
             self._wait_for_commands_menu()
 
+    def _previous_setting_awaiting_confirmation(self):
+        self.driver.find_element(By.XPATH, f"//*[contains(text(), 'Awaiting confirmation')]")
+        logger.info('awaiting previous setting confirmation')
+
     def _temperature_setting_action(self, container: str, temperature: str):
         self._open_container_commands(container)
         self._wait_for_commands_menu()
         self._cancel_previous_setting()
-        self._open_temperature_setting_modal()
-        self._enter_temperature_setting(temperature)
+        try:
+            self._previous_setting_awaiting_confirmation()
+        except NoSuchElementException:
+            self._open_temperature_setting_modal()
+            self._enter_temperature_setting(temperature)
 
     def _temperature_check_and_setting(self, container: str, temperature: str) -> list[Ctrl]:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
         logging.info(f'read: {container_check.setpoint}, required: {temperature}')
         if container_check.setpoint != temperature:
-            self._temperature_setting_action(container, temperature)
+            try:
+                self._temperature_setting_action(container, temperature)
+            except ElementNotInteractableException:
+                pass
         return check_values
-
-    def check_containers_and_set_temperature0(self, container: str, temperature: str) -> list[Ctrl]:
-        self.sign_in()
-        try:
-            read_settings = self._temperature_check_and_setting(container, temperature)
-        except Exception as ex:
-            logging.warning(f"{ex}")
-            raise DriverExecuteError(ex)
-        else:
-            return read_settings
-        finally:
-            self.driver.close()
 
     def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[Ctrl]:
         self.sign_in()

@@ -1,12 +1,5 @@
 from .execute import run_lambda
 import logging
-import sys
-
-# logging.basicConfig(
-#     stream=sys.stderr,
-#     level=logging.INFO,
-#     format='%(asctime)s: %(message)s'
-# )
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
