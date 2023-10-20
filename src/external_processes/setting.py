@@ -1,7 +1,10 @@
-from .drive import ContainerSettingsDriver, Ctrl
-from .database import select_from_db, update_status_in_db, insert_one_object_into_db
-from .api import Control, ContainerSet, Setting, SetControl
-from .checking import create_and_save_checks, create_and_save_control
+from src.external_apis.drive import ContainerSettingsDriver, Ctrl
+from src.internal_apis.database import select_from_db, update_status_in_db, insert_one_object_into_db
+from src.internal_apis.models import Control, ContainerSet, Setting, SetControl
+from src.internal_processes.checking import create_and_save_checks
+from src.internal_processes.controlling import create_and_save_control
+from src.internal_processes.driving import driver_check_and_introduce_setting
+
 import logging
 
 logger = logging.getLogger()
@@ -40,14 +43,8 @@ def set_process(set_id: str):
     def run_set(go_set: Setting):
         logger.info('running setting of temperature')
 
-        def driver_check_containers_and_execute_set(container_name: str, temp_setting: str) -> list[Ctrl]:
-            logger.info(f'launching webdriver to set {temp_setting} in {container_name}')
-            return ContainerSettingsDriver().check_containers_and_set_temperature(
-                container=container_name,
-                temperature=temp_setting)
-
         set_container_pairing = get_set_container_relationship()
-        container_controls = driver_check_containers_and_execute_set(
+        container_controls = driver_check_and_introduce_setting(
             container_name=set_container_pairing.container_id,
             temp_setting=(set_temperature := f'{str(go_set.temperature)}.0'))
         create_and_save_checks(container_controls)

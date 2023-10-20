@@ -1,13 +1,13 @@
+# from src.internal_apis.models import Setting, Tasking
 from typing import Union
 from psycopg2 import connect
-from .api import Setting, Tasking
 from pathlib import Path
 from dotenv import dotenv_values
 from psycopg2.extras import execute_values
 import logging
 
 
-dotenv_path = Path(__file__).parent.parent / '.env'
+dotenv_path = Path(__file__).parent.parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 db_config = {
@@ -111,7 +111,20 @@ def clear_table(table_name: str):
         delete_connection.commit()
 
 
-def update_status_in_db(update_object: Union[Tasking, Setting]):
+# def update_status_in_db0(update_object: Union[Tasking, Setting]):
+#     logging.info(f'updating status in db to {update_object.status}')
+#     insert_connection, insert_cursor = db_connection_and_cursor()
+#     update_query = f"""
+#         UPDATE {update_object.__tablename__}
+#         SET status='{update_object.status}'
+#         WHERE id='{update_object.id}'
+#         """
+#     with insert_cursor:
+#         insert_cursor.execute(update_query)
+#         insert_connection.commit()
+
+
+def update_status_in_db(update_object: object):
     logging.info(f'updating status in db to {update_object.status}')
     insert_connection, insert_cursor = db_connection_and_cursor()
     update_query = f"""

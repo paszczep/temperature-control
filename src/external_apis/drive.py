@@ -13,7 +13,7 @@ import logging
 
 logger = logging.getLogger()
 
-dotenv_path = Path(__file__).parent.parent / '.env'
+dotenv_path = Path(__file__).parent.parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 
@@ -34,7 +34,7 @@ class BrowserDriver:
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280x1696")
         options.add_argument("--start-maximized")
-        options.add_argument("--single-process")
+        options.add_argument("--single-external_processes")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-dev-tools")
         options.add_argument("--no-zygote")
@@ -136,7 +136,7 @@ class ContainerValuesDriver(_ContainerDriver):
         return container_data
 
     def read_values(self) -> list[Ctrl]:
-        logger.info('reading container values process start')
+        logger.info('reading container values external_processes start')
         self.sign_in()
         container_data = self.container_values_reading_action()
         self.driver.close()

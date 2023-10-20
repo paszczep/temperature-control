@@ -1,9 +1,19 @@
+from src.internal_apis.database import (select_from_db, update_status_in_db, insert_one_object_into_db)
 from dataclasses import dataclass, field
 from random import choice
 from typing import Union
 from decimal import Decimal
 from datetime import datetime
 import pytz
+import logging
+import time
+from uuid import uuid4
+
+logger = logging.getLogger()
+
+
+def is_younger_than(age_timestamp: int, minutes: int = 15) -> bool:
+    return bool(age_timestamp > (time.time() - 60*minutes))
 
 
 @dataclass
@@ -116,6 +126,13 @@ class Tasking:
     t_max: int
     t_freeze: int
     status: str
+
+    def is_not_done_yet(self) -> bool:
+        logger.info(f'server time: {(now_time := int(time.time()))} '
+                    f'task start: {(task_start_time := self.start)} '
+                    f'task duration: {(task_duration := self.duration)}')
+        if now_time < task_start_time + task_duration:
+            return True
 
 
 @dataclass(frozen=True)

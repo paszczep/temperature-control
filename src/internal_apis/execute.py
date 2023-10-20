@@ -1,14 +1,14 @@
-from .tasking import task_process
-from .setting import set_process
-from .checking import check_containers
-from .initialize import initialize_database
+from src.external_processes.tasking import task_process
+from src.external_processes.setting import set_process
+from src.internal_processes.checking import check_containers
+from src.external_processes.initializing import initialize_database
 from hashlib import sha256
 from pathlib import Path
 from dotenv import dotenv_values
 import logging
 
-
-dotenv_path = Path(__file__).parent.parent / '.env'
+root_dir = Path(__file__).parent.parent.parent
+dotenv_path = root_dir / '.env'
 env_values = dotenv_values(dotenv_path)
 
 

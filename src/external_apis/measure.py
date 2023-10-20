@@ -1,4 +1,4 @@
-from .login import filled_login_params
+from src.external_apis.login import filled_login_params
 from requests import Session
 from bs4 import BeautifulSoup
 from typing import Union
@@ -8,7 +8,7 @@ from pathlib import Path
 from dotenv import dotenv_values
 
 
-dotenv_path = Path(__file__).parent.parent / '.env'
+dotenv_path = Path(__file__).parent.parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
 
 
