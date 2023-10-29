@@ -1,4 +1,3 @@
-from src.internal_apis.database import (select_from_db, update_status_in_db, insert_one_object_into_db)
 from dataclasses import dataclass, field
 from random import choice
 from typing import Union
@@ -7,7 +6,6 @@ from datetime import datetime
 import pytz
 import logging
 import time
-from uuid import uuid4
 
 logger = logging.getLogger()
 
@@ -21,7 +19,7 @@ class DataObject:
     def get_log_info(self) -> str:
         object_dict_without_id = {key: value for key, value in self.__dict__.items() if key != 'id'}
         for key, value in object_dict_without_id.items():
-            if 'time' in key and type(value) == int:
+            if 'time' in key and isinstance(value, int):
                 object_dict_without_id[key] = datetime.strftime(
                     datetime.fromtimestamp(value), "%Y-%m-%d %H:%M")
         return str(object_dict_without_id)[1:-1].replace("'", "")
@@ -127,12 +125,19 @@ class Tasking:
     t_freeze: int
     status: str
 
-    def is_not_done_yet(self) -> bool:
+    def is_finished(self) -> bool:
         logger.info(f'server time: {(now_time := int(time.time()))} '
                     f'task start: {(task_start_time := self.start)} '
                     f'task duration: {(task_duration := self.duration)}')
-        if now_time < task_start_time + task_duration:
+        if now_time > task_start_time + task_duration:
             return True
+
+    def is_heating_up(self) -> bool:
+        preheat_time = int((self.duration * 0.4) // 60)
+        if is_younger_than(self.start, minutes=preheat_time):
+            return True
+        else:
+            return False
 
 
 @dataclass(frozen=True)
@@ -158,7 +163,10 @@ class ContainerSet:
     set_id: str
 
 
-data_objects = [Check,
+data_objects = [Container,
+                Thermometer,
+                ContainerThermometer,
+                Check,
                 Control,
                 Reading,
                 Tasking,
@@ -166,4 +174,3 @@ data_objects = [Check,
                 TaskControl,
                 Setting,
                 SetControl]
-

@@ -1,5 +1,5 @@
 from src.external_apis.drive import ContainerValuesDriver, Ctrl
-from src.internal_apis.database import (insert_multiple_objects_into_db, select_from_db, update_status_in_db)
+from src.internal_apis.database_query import (insert_multiple_objects_into_db, select_from_db, update_status_in_db)
 from src.internal_apis.models import Check, is_younger_than, ContainerTask, Tasking
 from uuid import uuid4
 from decimal import Decimal
@@ -21,6 +21,12 @@ def error_task(bad_task: Tasking):
     update_status_in_db(bad_task)
 
 
+def end_task(ended_task: Tasking):
+    logger.info('task end')
+    ended_task.status = 'ended'
+    update_status_in_db(ended_task)
+
+
 def get_related_container_name(task_id: str) -> str:
     return [ContainerTask(**c) for c in select_from_db(
         table_name=ContainerTask.__tablename__, where_equals={'task_id': task_id})].pop().container_id
@@ -40,7 +46,7 @@ def create_and_save_checks(check_ctrls: list[Ctrl]) -> list[Check]:
             read_setpoint=c.setpoint
         ) for c in source_ctrls]
     created_checks = create_checks_from_ctrls(check_ctrls)
-    insert_multiple_objects_into_db(created_checks, Check.__tablename__)
+    insert_multiple_objects_into_db(created_checks)
     return created_checks
 
 

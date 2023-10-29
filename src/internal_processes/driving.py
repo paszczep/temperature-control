@@ -1,5 +1,5 @@
 from src.external_apis.drive import ContainerSettingsDriver, Ctrl
-from src.internal_processes.reading import read_relevant_temperature
+from src.internal_processes.reading import task_relevant_temperature_reading
 from src.internal_processes.checking import create_and_save_checks
 from src.internal_processes.controlling import create_and_save_control, create_task_control_pairing
 
@@ -18,7 +18,7 @@ def driver_set_go_save_checks_and_control(
         task_id: str,
         task_container_name: str
 ):
-    read_relevant_temperature(task_id)
+    task_relevant_temperature_reading(task_id)
     logging.info(f'initiating driver to set {str(temperature_setting)}')
     driver_checks = driver_check_and_introduce_setting(
         container_name=task_container_name,

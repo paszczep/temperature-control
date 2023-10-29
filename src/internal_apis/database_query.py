@@ -1,31 +1,14 @@
-# from src.internal_apis.models import Setting, Tasking
+from src.internal_apis.database_connect import db_connection_and_cursor
 from typing import Union
-from psycopg2 import connect
-from pathlib import Path
-from dotenv import dotenv_values
-from psycopg2.extras import execute_values
 import logging
-
-
-dotenv_path = Path(__file__).parent.parent.parent / '.env'
-env_values = dotenv_values(dotenv_path)
-
-db_config = {
-    "host": env_values.get('DB_HOST'),
-    "dbname": env_values.get('DB_NAME'),
-    "user": env_values.get('DB_USER'),
-    "password": env_values.get('DB_PASSWORD'),
-    "port": env_values.get('DB_PORT')
-}
-
-db_connection = connect(**db_config)
-logging.info('initiated database connection')
-
-
-def db_connection_and_cursor():
-    logging.info('db cursor')
-    db_cursor = db_connection.cursor()
-    return db_connection, db_cursor
+# from psycopg2.extras import execute_values
+#
+#
+# def insert_many_notes(cur):
+#     execute_values(
+#         cur,
+#         "INSERT INTO test (id, v1, v2) VALUES %s",
+#         [(1, 2, 3), (4, 5, 6), (7, 8, 9)])
 
 
 def select_from_db(
@@ -68,15 +51,9 @@ def select_from_db(
     return return_values
 
 
-def insert_many_notes(cur):
-    execute_values(
-        cur,
-        "INSERT INTO test (id, v1, v2) VALUES %s",
-        [(1, 2, 3), (4, 5, 6), (7, 8, 9)])
-
-
-def insert_multiple_objects_into_db(data_objects: list, table_name: str):
+def insert_multiple_objects_into_db(data_objects: list):
     object_zero = data_objects[0]
+    table_name = object_zero.__tablename__
     logging.info(f'inserting multiple {type(object_zero)} objects into db')
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
@@ -89,7 +66,8 @@ def insert_multiple_objects_into_db(data_objects: list, table_name: str):
         insert_connection.commit()
 
 
-def insert_one_object_into_db(data_object: object, table_name: str):
+def insert_one_object_into_db(data_object: object):
+    table_name = data_object.__tablename__
     logging.info(f'inserting object into {table_name}')
     value_keys = tuple(data_object.__annotations__.keys())
     insert_data = [data_object.__dict__[key] for key in value_keys]
@@ -109,19 +87,6 @@ def clear_table(table_name: str):
     with delete_cursor:
         delete_cursor.execute(delete_query)
         delete_connection.commit()
-
-
-# def update_status_in_db0(update_object: Union[Tasking, Setting]):
-#     logging.info(f'updating status in db to {update_object.status}')
-#     insert_connection, insert_cursor = db_connection_and_cursor()
-#     update_query = f"""
-#         UPDATE {update_object.__tablename__}
-#         SET status='{update_object.status}'
-#         WHERE id='{update_object.id}'
-#         """
-#     with insert_cursor:
-#         insert_cursor.execute(update_query)
-#         insert_connection.commit()
 
 
 def update_status_in_db(update_object: object):

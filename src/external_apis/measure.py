@@ -18,7 +18,7 @@ password = env_values.get('MEASURE_PASSWORD')
 
 
 @dataclass(frozen=True)
-class Measure:
+class DeviceRead:
     device_id: str
     device_name: str
     group: str
@@ -49,14 +49,14 @@ def _measure_table_rows(soup: BeautifulSoup) -> list[list]:
     return rows_with_values
 
 
-def _measures_from_page(content: BeautifulSoup) -> list[Measure]:
+def _measures_from_page(content: BeautifulSoup) -> list[DeviceRead]:
     table_rows = _measure_table_rows(content)
     devices_readings = list()
     time_now = int(time())
     for table_row in table_rows:
         _, _, name, group, value, device_time, _id = table_row
         devices_readings.append(
-            Measure(_id, name, group, value, device_time, time_now))
+            DeviceRead(_id, name, group, value, device_time, time_now))
     return devices_readings
 
 
@@ -68,7 +68,7 @@ def _get_next_page_href(content_soup: BeautifulSoup) -> Union[str, IndexError]:
     return next_page_href
 
 
-def _recursively_read_table_pages(session: Session, response_content: bytes, all_measures: list) -> list[Measure]:
+def _recursively_read_table_pages(session: Session, response_content: bytes, all_measures: list) -> list[DeviceRead]:
     content_soup = BeautifulSoup(response_content, 'html.parser')
     page_measures = _measures_from_page(content_soup)
     all_measures += page_measures
@@ -84,7 +84,7 @@ def _recursively_read_table_pages(session: Session, response_content: bytes, all
         return all_measures
 
 
-def read_all_thermometers() -> list[Measure]:
+def read_all_thermometers() -> list[DeviceRead]:
     session = Session()
     response_content = _login_and_get_first_view(session)
     all_devices = []

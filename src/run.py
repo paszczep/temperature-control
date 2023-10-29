@@ -1,7 +1,6 @@
 from src.internal_apis.execute import run_lambda
 import logging
 
-
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 

@@ -1,6 +1,6 @@
 from src.external_apis.drive import ContainerValuesDriver
 from src.external_apis.measure import read_all_thermometers
-from src.internal_apis.database import insert_multiple_objects_into_db, clear_table
+from src.internal_apis.database_query import insert_multiple_objects_into_db, clear_table
 from src.internal_apis.models import Container, Check, Thermometer, data_objects
 from uuid import uuid4
 import logging
@@ -19,10 +19,9 @@ def initialize_database():
         logger.info('inserting containers')
         container_values_read = ContainerValuesDriver().read_values()
         containers = [Container(name=container.name) for container in container_values_read]
-        clear_table(container_table := Container.__tablename__)
-        insert_multiple_objects_into_db(containers, container_table)
+        insert_multiple_objects_into_db(containers)
 
-        control_data = [
+        check_data = [
             Check(
                 id=str(uuid4()),
                 timestamp=c.database_time,
@@ -33,7 +32,7 @@ def initialize_database():
                 read_setpoint=c.setpoint
             )
             for c in container_values_read]
-        insert_multiple_objects_into_db(control_data, Check.__tablename__)
+        insert_multiple_objects_into_db(check_data)
 
     def insert_thermometers():
         logger.info('inserting thermometers')
@@ -43,9 +42,8 @@ def initialize_database():
                 device_name=thermometer.device_name,
                 device_group=thermometer.group
             ) for thermometer in read_all_thermometers()]
-        clear_table(thermometer_table := Thermometer.__tablename__)
-        insert_multiple_objects_into_db(thermometers, thermometer_table)
+        insert_multiple_objects_into_db(thermometers)
 
-    clear_data_tables()
+    # clear_data_tables()
     insert_containers()
     insert_thermometers()

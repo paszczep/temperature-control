@@ -1,7 +1,7 @@
 from time import time, sleep
 from selenium import webdriver
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException
+from selenium.common.exceptions import NoSuchElementException, ElementNotInteractableException, TimeoutException
 from tempfile import mkdtemp
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as ec
@@ -29,12 +29,11 @@ class BrowserDriver:
         service = webdriver.ChromeService("/opt/chromedriver")
 
         options.binary_location = '/opt/chrome/chrome'
-        options.add_argument('--headless')
+        options.add_argument("--headless=new")
         options.add_argument('--no-sandbox')
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1280x1696")
-        options.add_argument("--start-maximized")
-        options.add_argument("--single-external_processes")
+        options.add_argument("--single-process")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-dev-tools")
         options.add_argument("--no-zygote")
@@ -138,7 +137,10 @@ class ContainerValuesDriver(_ContainerDriver):
     def read_values(self) -> list[Ctrl]:
         logger.info('reading container values external_processes start')
         self.sign_in()
-        container_data = self.container_values_reading_action()
+        try:
+            container_data = self.container_values_reading_action()
+        except TimeoutException:
+            raise
         self.driver.close()
         return container_data
 
