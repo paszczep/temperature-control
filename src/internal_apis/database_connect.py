@@ -1,8 +1,8 @@
 from psycopg2 import connect, OperationalError
 from pathlib import Path
 from dotenv import dotenv_values
-import logging
-import time
+from logging import info, warning
+from time import sleep
 
 
 dotenv_path = Path(__file__).parent.parent.parent / '.env'
@@ -17,28 +17,41 @@ db_config = {
 }
 
 
-def establish_db_connection(retries=5):
+RETRIES = 10
+
+
+def establish_db_connection(retries=RETRIES):
     while retries:
         try:
-            logging.info('initiating database connection')
+            info('initiating database connection')
             established_db_connection = connect(**db_config)
             return established_db_connection
         except OperationalError as e:
             retries -= 1
-            logging.warning(f"(Attempt {retries}) Error connecting to the database: {e}")
-            time.sleep(10)
+            warning(f"(Attempt {retries}) Error connecting to the database: {e}")
+            sleep(3)
             return establish_db_connection(retries)
     else:
-        logging.info("max retries reached, unable to establish a connection")
+        info("max retries reached, unable to establish a connection")
         raise Exception("unable to connect to the database")
 
 
 db_connection = establish_db_connection()
 
 
+def cursor_try_except(func, retry=RETRIES):
+    while retry:
+        try:
+            return func()
+        except OperationalError as ex:
+            warning(f'cursor error:{ex}')
+            sleep(2)
+            retry -= 1
+
+
 def db_connection_and_cursor():
-    logging.info('db connection and cursor')
-    db_cursor = db_connection.cursor()
+    info('db cursor')
+    db_cursor = cursor_try_except(db_connection.cursor)
     return db_connection, db_cursor
 
 

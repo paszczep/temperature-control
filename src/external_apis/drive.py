@@ -9,9 +9,8 @@ from selenium.webdriver.common.by import By
 from dataclasses import dataclass
 from pathlib import Path
 from dotenv import dotenv_values
-import logging
-
-logger = logging.getLogger()
+from logging import info, warning
+from decimal import Decimal
 
 dotenv_path = Path(__file__).parent.parent.parent / '.env'
 env_values = dotenv_values(dotenv_path)
@@ -74,14 +73,14 @@ class _ContainerDriver(BrowserDriver):
         input_field.send_keys(input_value)
 
     def click_not_now(self):
-        logger.info('not now refresh password')
+        info('driver not now refresh password')
         try:
             self.driver.find_element(By.ID, 'btn_notnow').click()
         except NoSuchElementException:
             pass
 
     def sign_in(self):
-        logger.info('signing in!')
+        info('driver signing in!')
         self.driver.get(self.url)
         sign_in_button = self.wait_for_element_visibility((By.CSS_SELECTOR, 'button.btn.btn-primary'))
         self.find_and_fill_input('Username', self.login)
@@ -92,7 +91,7 @@ class _ContainerDriver(BrowserDriver):
 
 class ContainerValuesDriver(_ContainerDriver):
     def _read_container_names(self) -> list:
-        logging.info('reading container names')
+        info('driver reading container names')
         container_label_keys = (By.CSS_SELECTOR, "span.emerson-menu-cursor.emerson-container-item-label")
         self.wait_for_element_visibility(container_label_keys)
         item_labels = self.driver.find_elements(*container_label_keys)
@@ -100,7 +99,7 @@ class ContainerValuesDriver(_ContainerDriver):
         return name_elements
 
     def _read_container_values(self) -> list:
-        logging.info('reading container values')
+        info('driver reading container values')
         values_table = self.driver.find_elements(By.CSS_SELECTOR, "table.k-selectable")[-1]
         invisible_cells = values_table.find_elements(By.XPATH, "//td[@style='display:none']")
         all_cells = values_table.find_elements(By.XPATH, "//td[@role='gridcell']")
@@ -128,26 +127,38 @@ class ContainerValuesDriver(_ContainerDriver):
         return all_data
 
     def container_values_reading_action(self) -> list[Ctrl]:
-        logger.info('reading container data')
+        info('driver reading container data')
         names = self._read_container_names()
         values = self._read_container_values()
         container_data = self._parse_value_table(names, values)
         return container_data
 
+    def load_data_table(self, retry: int = 5):
+        while retry:
+            try:
+                info('driver loading data table')
+                return self.container_values_reading_action()
+            except TimeoutException:
+                retry -= 1
+                retry_count = 5 - retry
+                table_wait = self.wait_time * 0.2 * retry_count
+                info(f'retry {retry_count}, waiting {table_wait}')
+                sleep(table_wait)
+                return self.container_values_reading_action()
+        else:
+            warning('driver failed to load container service table')
+
     def read_values(self) -> list[Ctrl]:
-        logger.info('reading container values external_processes start')
+        info('driver reading container values process start')
         self.sign_in()
-        try:
-            container_data = self.container_values_reading_action()
-        except TimeoutException:
-            raise
+        container_data = self.load_data_table()
         self.driver.close()
         return container_data
 
 
 class DriverExecuteError(Exception):
     def __init__(self, message):
-        logger.warning('execute button error')
+        warning('driver execute error')
         self.message = message
         super().__init__(self.message)
 
@@ -155,57 +166,60 @@ class DriverExecuteError(Exception):
 class ContainerSettingsDriver(ContainerValuesDriver):
 
     def _open_container_commands(self, container_name: str):
-        logger.info('opening container commands')
+        info('driver opening container commands')
         self.wait_for_element_and_click((By.XPATH, f"//*[contains(text(), '{container_name}')]"))
         self.wait_for_element_and_click((By.CSS_SELECTOR, 'div.k-icon.k-collapse-prev'))
         self.wait_for_element_and_click((By.PARTIAL_LINK_TEXT, 'Commands'))
 
     def _open_temperature_setting_modal(self):
-        logger.info('opening settings modal')
+        info('driver opening settings modal')
         execute_button = self.driver.find_elements(By.CSS_SELECTOR, "a.k-grid-executeCommand.k-button")[2]
         execute_button.click()
 
     def _enter_temperature_setting(self, temperature_set_point: str):
-        logger.info('entering temperature setting')
+        info('driver entering temperature setting')
         self.find_and_fill_input('Set point', temperature_set_point)
         if not self.debug:
             self.wait_for_element_and_click((By.ID, 'temperatureSetpointExecuteBtn'))
-            logger.info('click! "Execute" button')
+            info('driver click! Execute button')
             sleep(1)
         else:
-            logging.info('debug mode, clicking "cancel"')
+            info('driver debug mode, clicking Cancel')
             commands_dialog = self.driver.find_elements(By.ID, 'commandsDialog')[0]
             commands_dialog.find_elements(By.CSS_SELECTOR, 'button.btn.btn-default')[0].click()
 
     def _wait_for_commands_menu(self):
+        menu_wait = self.wait_time + 3
+        info(f'driver shamefully implicitly waiting for commands menu {menu_wait} seconds')
         # loading_image = self.driver.find_element(By.CSS_SELECTOR, "div.k-loading-image")
         # logging.info(f'{loading_image.get_attribute("outerHTML")}')
         # self.driver_wait().until(ec.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-image")))
-        sleep(self.wait_time + 3)
+        sleep(menu_wait)
 
     def _cancel_previous_setting(self):
-        logger.info('attempted canceling previous setting')
+        info('driver attempted canceling previous setting')
         commands_grid = self.driver.find_element(By.ID, "container-grid-detail-commands")
         all_cancel_buttons = commands_grid.find_elements(By.CSS_SELECTOR, "a.k-grid-cancelCommand.k-button")
         invisible_elements = commands_grid.find_elements(By.XPATH, "//*[@style='display: none;']")
         cancel_buttons = [b for b in all_cancel_buttons if b not in invisible_elements]
         if cancel_buttons:
-            logger.info('canceling previous setting')
+            info('driver canceling previous setting')
             cancel_button = cancel_buttons.pop()
-            logger.info(f'click {cancel_button.text}')
+            info(f'driver click "{cancel_button.text}"')
             cancel_button.click()
             sleep(1)
             sure_modal = self.wait_for_element_visibility((By.ID, 'confirmationDialog'))
             sure_ok_button = sure_modal.find_element(By.CSS_SELECTOR, "button.btn.btn-primary")
-            logger.info(f'click {sure_ok_button.text}')
+            info(f'driver click "{sure_ok_button.text}"')
             ActionChains(self.driver).move_to_element(sure_ok_button).click(sure_ok_button).perform()
             self._wait_for_commands_menu()
 
     def _previous_setting_awaiting_confirmation(self):
         self.driver.find_element(By.XPATH, f"//*[contains(text(), 'Awaiting confirmation')]")
-        logger.info('awaiting previous setting confirmation')
+        info('driver: "Awaiting previous setting confirmation"')
 
     def _temperature_setting_action(self, container: str, temperature: str):
+        info(f'driver setting {temperature}°C in container {container}')
         self._open_container_commands(container)
         self._wait_for_commands_menu()
         self._cancel_previous_setting()
@@ -218,16 +232,19 @@ class ContainerSettingsDriver(ContainerValuesDriver):
     def _temperature_check_and_setting(self, container: str, temperature: str) -> list[Ctrl]:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
-        logging.info(f'read: {container_check.setpoint}, required: {temperature}')
-        if container_check.setpoint != temperature:
+        info(f'driver setting read: {container_check.setpoint}, required: {temperature}')
+        if Decimal(container_check.setpoint) != Decimal(temperature):
             try:
                 self._temperature_setting_action(container, temperature)
             except ElementNotInteractableException:
+                warning('driver setting unavailable')
                 pass
         return check_values
 
     def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[Ctrl]:
+        info('driver check containers and set temperature')
         self.sign_in()
         read_settings = self._temperature_check_and_setting(container, temperature)
+        info('closing web driver')
         self.driver.close()
         return read_settings

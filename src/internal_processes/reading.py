@@ -1,6 +1,6 @@
 from src.external_apis.measure import read_all_thermometers, DeviceRead
 from src.internal_apis.database_query import insert_multiple_objects_into_db, select_from_db
-from src.internal_apis.models import ContainerThermometer, ContainerTask, Reading, TaskRead, use_read, is_younger_than
+from src.internal_apis.models_data import ContainerThermometer, ContainerTask, Reading, TaskRead, use_read
 from uuid import uuid4
 import logging
 from decimal import Decimal
@@ -59,7 +59,7 @@ def measure_timely_temperature(task_id: str) -> list[Decimal]:
         return all_reads
 
     def time_valid_reads():
-        read_time_valid = [r.temperature for r in read_all if is_younger_than(r.read_time)]
+        read_time_valid = [r.temperature for r in read_all if r.is_younger_than()]
         logging.info(f'{len(read_time_valid)} valid temperature reads: '
                      f'{", ".join(str(log_read) for log_read in read_time_valid)}')
         return read_time_valid

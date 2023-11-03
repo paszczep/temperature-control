@@ -1,11 +1,11 @@
-from src.external_processes.tasking import task_process
+from src.external_processes.tasking_process import task_process
 from src.external_processes.setting import set_process
 from src.internal_processes.checking import check_containers
 from src.external_processes.initializing import initialize_database
 from hashlib import sha256
 from pathlib import Path
 from dotenv import dotenv_values
-import logging
+from logging import info
 
 root_dir = Path(__file__).parent.parent.parent
 dotenv_path = root_dir / '.env'
@@ -32,15 +32,15 @@ def run_lambda(event, _):
 
         if key_1 == key_hash(env_values.get('KEY_1')) and key_2 == env_values.get('KEY_2'):
             if initialize:
-                logging.info(f'initializing database')
+                info(f'initializing database')
                 initialize_database()
             elif task:
-                logging.info(f'running task')
+                info(f'running task')
                 task_process(task_id=task)
             elif setting:
-                logging.info(f'running setting')
+                info(f'running setting')
                 set_process(set_id=setting)
             elif check:
-                logging.info(f'just checking')
+                info(f'just checking')
                 check_containers()
     return event

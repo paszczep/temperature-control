@@ -2,39 +2,43 @@ from src.external_apis.drive import ContainerSettingsDriver, Ctrl
 from src.internal_processes.reading import task_relevant_temperature_reading
 from src.internal_processes.checking import create_and_save_checks
 from src.internal_processes.controlling import create_and_save_control, create_task_control_pairing
-
+from typing import Union
+from decimal import Decimal
 import logging
+from dataclasses import dataclass
 
 
-def driver_check_and_introduce_setting(container_name: str, temp_setting: str) -> list[Ctrl]:
-    logging.info(f'launching webdriver to set {temp_setting} in {container_name}')
-    return ContainerSettingsDriver().check_containers_and_set_temperature(
-        container=container_name,
-        temperature=temp_setting)
+def _parse_temperature_value(value: Union[int, str, Decimal]) -> str:
+    if isinstance(value, int):
+        value = f'{str(value)}.0'
+    elif isinstance(value, Decimal):
+        value = str(value)
+    return value
 
 
-def driver_set_go_save_checks_and_control(
-        temperature_setting: int,
-        task_id: str,
-        task_container_name: str
-):
-    task_relevant_temperature_reading(task_id)
-    logging.info(f'initiating driver to set {str(temperature_setting)}')
-    driver_checks = driver_check_and_introduce_setting(
-        container_name=task_container_name,
-        temp_setting=(temperature_setting := f'{str(temperature_setting)}.0'))
-    create_and_save_checks(driver_checks)
-    performed_control = create_and_save_control(temperature_setting)
-    create_task_control_pairing(performed_control, task_id)
+class DrivingSetting:
+    process_id: str
+    container_name: str
+    temperature_setting: Union[int, str, Decimal]
 
+    def __init__(self,
+                 process_id: str,
+                 container_name: str,
+                 temperature_setting: Union[int, str, Decimal]):
+        self.process_id = process_id
+        self.container_name = container_name
+        self.temperature_setting = _parse_temperature_value(temperature_setting)
 
-def set_temperature_if_necessary(
-        task_id: str,
-        task_container_name: str,
-        existing_check_temperature: int,
-        temperature_setting: int):
-    logging.info(f'considering {str(temperature_setting)}, provided {str(existing_check_temperature)}')
-    if temperature_setting != existing_check_temperature:
-        driver_set_go_save_checks_and_control(temperature_setting, task_id, task_container_name)
-    else:
-        logging.info('desired setting already active')
+    def driver_check_and_introduce_setting(self) -> list[Ctrl]:
+        logging.info(f'launching webdriver to set {self.temperature_setting} in {self.container_name}')
+        return ContainerSettingsDriver().check_containers_and_set_temperature(
+            container=self.container_name,
+            temperature=self.temperature_setting)
+
+    def driver_set_go_save_checks_and_control(self):
+        task_relevant_temperature_reading(self.process_id)
+        logging.info(f'initiating driver to set {str(self.temperature_setting)}')
+        driver_checks = self.driver_check_and_introduce_setting()
+        create_and_save_checks(driver_checks)
+        performed_control = create_and_save_control(self.temperature_setting)
+        create_task_control_pairing(performed_control, self.process_id)

@@ -4,17 +4,19 @@ from typing import Union
 from decimal import Decimal
 from datetime import datetime
 import pytz
-import logging
-import time
+from time import time
 
-logger = logging.getLogger()
-
-
-def is_younger_than(age_timestamp: int, minutes: int = 15) -> bool:
-    return bool(age_timestamp > (time.time() - 60*minutes))
+CHECK_MINUTES_INTERVAL = 15
 
 
 @dataclass
+class Timestamped:
+    timestamp: int
+
+    def is_younger_than(self, minutes: int = CHECK_MINUTES_INTERVAL) -> bool:
+        return bool(self.timestamp > (time() - 60*minutes))
+
+
 class DataObject:
     def get_log_info(self) -> str:
         object_dict_without_id = {key: value for key, value in self.__dict__.items() if key != 'id'}
@@ -33,6 +35,9 @@ class Reading(DataObject):
     read_time: Union[str, int]
     db_time: int
     thermometer: str
+
+    def is_younger_than(self, minutes: int = CHECK_MINUTES_INTERVAL) -> bool:
+        return bool(self.read_time > (time() - 60*minutes))
 
 
 def use_read(read_read: Reading) -> Reading:
@@ -69,18 +74,27 @@ class ContainerThermometer:
     thermometer_id: str
 
 
-labels = ['Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna', 'Kazimierz', 'Marta', 'Fasola', 'Orzeszek', 'Rodzynek']
+labels = [
+    'Marcin', 'Klops', 'Marchew', 'Ziemia', 'Ojczyzna', 'Kazimierz', 'Marta', 'Fasola', 'Orzeszek', 'Rodzynek',
+    'Skrzypce', 'Kandelabr', 'Basia', 'Zofia', 'Tango', 'Rosja', 'Ryba'
+          ]
+
+
+def choose_label() -> str:
+    chosen_label = choice(labels)
+    labels.remove(chosen_label)
+    return chosen_label
 
 
 @dataclass
 class Container:
     __tablename__ = 'Container'
     name: str
-    label: str = field(default_factory=lambda: choice(labels))
+    label: str = field(default_factory=lambda: choose_label())
 
 
 @dataclass
-class Control(DataObject):
+class Control(DataObject, Timestamped):
     __tablename__ = 'control'
     id: str
     timestamp: int
@@ -88,7 +102,7 @@ class Control(DataObject):
 
 
 @dataclass
-class Check(DataObject):
+class Check(DataObject, Timestamped):
     __tablename__ = 'container_check'
     id: str
     container: str
@@ -125,19 +139,8 @@ class Tasking:
     t_freeze: int
     status: str
 
-    def is_finished(self) -> bool:
-        logger.info(f'server time: {(now_time := int(time.time()))} '
-                    f'task start: {(task_start_time := self.start)} '
-                    f'task duration: {(task_duration := self.duration)}')
-        if now_time > task_start_time + task_duration:
-            return True
-
-    def is_heating_up(self) -> bool:
-        preheat_time = int((self.duration * 0.4) // 60)
-        if is_younger_than(self.start, minutes=preheat_time):
-            return True
-        else:
-            return False
+    def has_started_ago(self, minutes: int = CHECK_MINUTES_INTERVAL) -> bool:
+        return bool(self.start > (time() - 60*minutes))
 
 
 @dataclass(frozen=True)
@@ -148,7 +151,7 @@ class ContainerTask:
 
 
 @dataclass
-class Setting:
+class Setting(Timestamped):
     __tablename__ = 'temp_set'
     id: str
     status: str
@@ -157,7 +160,7 @@ class Setting:
 
 
 @dataclass(frozen=True)
-class ContainerSet:
+class ContainerSetPair:
     __tablename__ = 'container_set'
     container_id: str
     set_id: str

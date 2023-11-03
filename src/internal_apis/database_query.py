@@ -1,6 +1,6 @@
 from src.internal_apis.database_connect import db_connection_and_cursor
 from typing import Union
-import logging
+from logging import info
 # from psycopg2.extras import execute_values
 #
 #
@@ -18,16 +18,16 @@ def select_from_db(
         where_in: Union[dict[str, list], None] = None,
         keys: bool = True
 ) -> Union[list, list[dict]]:
-    logging.info(f'db select from {table_name}')
+    info(f'db select from {table_name}')
 
-    def col_str(select_columns: list):
+    def _enum_cols(select_columns: list):
         if not select_columns:
             select_columns = '*'
         else:
             select_columns = str(select_columns)[1:-1].replace("'", '')
         return select_columns
 
-    def where_clause() -> str:
+    def _where_clause() -> str:
         if where_equals:
             return f" WHERE {list(where_equals.keys())[0]} = '{list(where_equals.values())[0]}'"
         elif where_in:
@@ -36,7 +36,7 @@ def select_from_db(
         else:
             return ''
 
-    select_query = f"""SELECT {col_str(columns)} FROM {table_name}{where_clause()}"""
+    select_query = f"""SELECT {_enum_cols(columns)} FROM {table_name}{_where_clause()}"""
     select_connection, select_cursor = db_connection_and_cursor()
 
     with select_cursor:
@@ -54,7 +54,7 @@ def select_from_db(
 def insert_multiple_objects_into_db(data_objects: list):
     object_zero = data_objects[0]
     table_name = object_zero.__tablename__
-    logging.info(f'inserting multiple {type(object_zero)} objects into db')
+    info(f'inserting multiple {type(object_zero)} objects into db')
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
     insert_query = f"""
@@ -68,7 +68,7 @@ def insert_multiple_objects_into_db(data_objects: list):
 
 def insert_one_object_into_db(data_object: object):
     table_name = data_object.__tablename__
-    logging.info(f'inserting object into {table_name}')
+    info(f'inserting object into {table_name}')
     value_keys = tuple(data_object.__annotations__.keys())
     insert_data = [data_object.__dict__[key] for key in value_keys]
     insert_query = f"""
@@ -81,7 +81,7 @@ def insert_one_object_into_db(data_object: object):
 
 
 def clear_table(table_name: str):
-    logging.info(f'clearing table {table_name}')
+    info(f'clearing table {table_name}')
     delete_query = f"""DELETE FROM {table_name}"""
     delete_connection, delete_cursor = db_connection_and_cursor()
     with delete_cursor:
@@ -90,7 +90,7 @@ def clear_table(table_name: str):
 
 
 def update_status_in_db(update_object: object):
-    logging.info(f'updating status in db to {update_object.status}')
+    info(f'updating status in db to {update_object.status}')
     insert_connection, insert_cursor = db_connection_and_cursor()
     update_query = f"""
         UPDATE {update_object.__tablename__} 
@@ -103,7 +103,7 @@ def update_status_in_db(update_object: object):
 
 
 def delete_from_table(table_name: str, where: dict):
-    logging.info(f'deleting from table {table_name} with a condition')
+    info(f'deleting from table {table_name} with a condition')
     delete_connection, delete_cursor = db_connection_and_cursor()
     delete_query = f"""DELETE FROM {table_name} WHERE {list(where.keys())[0]} = '{list(where.values())[0]}'"""
     with delete_cursor:
