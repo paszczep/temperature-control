@@ -1,8 +1,8 @@
 from src.external_apis.drive import DriverExecuteError
-from src.internal_processes.controlling import InvalidSettingRetry
-from src.internal_apis.models_data import Tasking, Check, Control
+from src.internal_processes.controlling_new import InvalidSettingRetry
+from src.internal_apis.models_data import TaskingValues, CheckValues, ControlValues
 from src.internal_apis.database_query import select_from_db
-from src.internal_processes.driving import DrivingSetting
+from src.internal_processes.driving import DrivingAction
 from src.internal_processes.checking import check_containers
 from src.external_processes.tasking_check import TaskingChecking
 from logging import info, warning
@@ -15,7 +15,7 @@ SETTING_RETRY_ERROR_THRESHOLD = 5
 
 class TaskingControlling(TaskingChecking):
 
-    def verify_task_control(self, verified_controls: list[Control], verified_checks: list[Check]):
+    def verify_task_control(self, verified_controls: list[ControlValues], verified_checks: list[CheckValues]):
         info('checking for errors')
         check_points = [chk.read_setpoint for chk in verified_checks if chk.timestamp > self.start]
         control_points = [ctrl.target_setpoint for ctrl in verified_controls]
@@ -54,11 +54,11 @@ class TaskingControlling(TaskingChecking):
              f'recent check temperature {str(self.check)}')
         if self.control != self.check:
             info('retrying previous setting')
-            DrivingSetting(
+            DrivingAction(
                 container_name=self.container_name,
                 process_id=self.id,
                 temperature_setting=self.control,
-            ).driver_set_go_save_checks_and_control()
+            ).driver_set_go_save_logs()
         else:
             self._no_controls()
 
@@ -72,8 +72,7 @@ class TaskingControlling(TaskingChecking):
 class TaskingProcessing(TaskingControlling):
 
     def task_process(self):
-        self.fetch_attributes()
-        if not self.check:
+        if not self.checking:
             if not self.has_started_ago(minutes=60):
                 info("task just started")
                 self.beginning()
@@ -95,7 +94,7 @@ def run_task(task_id: str):
     def get_processed_task() -> TaskingProcessing:
         info('fetching processed task')
         return [TaskingProcessing(**s) for s in select_from_db(
-            table_name=Tasking.__tablename__, where_equals={'id': task_id})].pop()
+            table_name=TaskingValues.__tablename__, where_equals={'id': task_id})].pop()
 
     info('processing task')
     running_task = get_processed_task()

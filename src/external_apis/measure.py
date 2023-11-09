@@ -63,7 +63,7 @@ def _measures_from_page(content: BeautifulSoup) -> list[DeviceRead]:
 def _get_next_page_href(content_soup: BeautifulSoup) -> Union[str, IndexError]:
     next_page = content_soup.find_all('li', {'class': 'next'})
     if not next_page:
-        raise IndexError('No more pages')
+        raise StopIteration('No more pages')
     next_page_href = next_page.pop().find_all(href=True).pop()['href']
     return next_page_href
 
@@ -74,7 +74,7 @@ def _recursively_read_table_pages(session: Session, response_content: bytes, all
     all_measures += page_measures
     try:
         next_href = _get_next_page_href(content_soup)
-    except IndexError:
+    except StopIteration:
         pass
     else:
         next_url = f'{base_url}{next_href}'

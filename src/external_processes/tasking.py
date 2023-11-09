@@ -1,6 +1,6 @@
 from src.external_apis.drive import DriverExecuteError
 from src.internal_processes.controlling import InvalidSettingRetry
-from src.internal_apis.models_data import Tasking
+from src.internal_apis.models_data import TaskingValues
 from src.internal_apis.database_query import select_from_db
 from src.internal_processes.checking import check_containers
 from src.external_processes.tasking_control import TaskingControlling
@@ -36,12 +36,13 @@ class TaskingRunning(TaskingProcessing):
     task_id: str
 
     def __init__(self, task_id: str):
+        super().__init__()
         self.task_id = task_id
 
     def get_processed_task(self) -> TaskingProcessing:
         info('fetching processed task')
         return [TaskingProcessing(**s) for s in select_from_db(
-            table_name=Tasking.__tablename__, where_equals={'id': self.task_id})].pop()
+            table_name=TaskingValues.__tablename__, where_equals={'id': self.task_id})].pop()
 
     def run_task(self):
         info('running task process')
@@ -55,5 +56,5 @@ class TaskingRunning(TaskingProcessing):
                 running_task.error_task()
 
 
-def task_process(task_id: str):
+def execute_task(task_id: str):
     TaskingRunning(task_id=task_id).run_task()

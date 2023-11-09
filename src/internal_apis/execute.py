@@ -1,5 +1,5 @@
-from src.external_processes.tasking_process import task_process
-from src.external_processes.setting import set_process
+from src.external_processes.tasking import execute_task
+from src.external_processes.setting import execute_setting
 from src.internal_processes.checking import check_containers
 from src.external_processes.initializing import initialize_database
 from hashlib import sha256
@@ -36,10 +36,10 @@ def run_lambda(event, _):
                 initialize_database()
             elif task:
                 info(f'running task')
-                task_process(task_id=task)
+                execute_task(task_id=task)
             elif setting:
                 info(f'running setting')
-                set_process(set_id=setting)
+                execute_setting(set_id=setting)
             elif check:
                 info(f'just checking')
                 check_containers()

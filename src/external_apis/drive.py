@@ -57,7 +57,7 @@ class BrowserDriver:
 
 
 @dataclass
-class Ctrl:
+class DriveCtrl:
     name: str
     logged: str
     received: str
@@ -116,7 +116,7 @@ class ContainerValuesDriver(_ContainerDriver):
         for row in range(names_number):
             row_values = values[row * column_number:row * column_number + column_number]
             all_data.append(
-                Ctrl(
+                DriveCtrl(
                     name=names.pop(),
                     logged=row_values[0],
                     received=row_values[1],
@@ -126,7 +126,7 @@ class ContainerValuesDriver(_ContainerDriver):
                 ))
         return all_data
 
-    def container_values_reading_action(self) -> list[Ctrl]:
+    def container_values_reading_action(self) -> list[DriveCtrl]:
         info('driver reading container data')
         names = self._read_container_names()
         values = self._read_container_values()
@@ -148,7 +148,7 @@ class ContainerValuesDriver(_ContainerDriver):
         else:
             warning('driver failed to load container service table')
 
-    def read_values(self) -> list[Ctrl]:
+    def read_values(self) -> list[DriveCtrl]:
         info('driver reading container values process start')
         self.sign_in()
         container_data = self.load_data_table()
@@ -229,7 +229,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
             self._open_temperature_setting_modal()
             self._enter_temperature_setting(temperature)
 
-    def _temperature_check_and_setting(self, container: str, temperature: str) -> list[Ctrl]:
+    def _temperature_check_and_setting(self, container: str, temperature: str) -> list[DriveCtrl]:
         check_values = self.container_values_reading_action()
         container_check = [ctrl for ctrl in check_values if ctrl.name == container].pop()
         info(f'driver setting read: {container_check.setpoint}, required: {temperature}')
@@ -241,7 +241,7 @@ class ContainerSettingsDriver(ContainerValuesDriver):
                 pass
         return check_values
 
-    def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[Ctrl]:
+    def check_containers_and_set_temperature(self, container: str, temperature: str) -> list[DriveCtrl]:
         info('driver check containers and set temperature')
         self.sign_in()
         read_settings = self._temperature_check_and_setting(container, temperature)

@@ -1,4 +1,4 @@
-from src.internal_apis.database_connect import db_connection_and_cursor
+from src.internal_apis.database_connect import db_connection_and_cursor, database_exception
 from typing import Union
 from logging import info
 # from psycopg2.extras import execute_values
@@ -11,6 +11,7 @@ from logging import info
 #         [(1, 2, 3), (4, 5, 6), (7, 8, 9)])
 
 
+@database_exception
 def select_from_db(
         table_name: str,
         columns: Union[list, None] = None,
@@ -51,6 +52,7 @@ def select_from_db(
     return return_values
 
 
+@database_exception
 def insert_multiple_objects_into_db(data_objects: list):
     object_zero = data_objects[0]
     table_name = object_zero.__tablename__
@@ -66,6 +68,7 @@ def insert_multiple_objects_into_db(data_objects: list):
         insert_connection.commit()
 
 
+@database_exception
 def insert_one_object_into_db(data_object: object):
     table_name = data_object.__tablename__
     info(f'inserting object into {table_name}')
@@ -80,6 +83,7 @@ def insert_one_object_into_db(data_object: object):
         insert_connection.commit()
 
 
+@database_exception
 def clear_table(table_name: str):
     info(f'clearing table {table_name}')
     delete_query = f"""DELETE FROM {table_name}"""
@@ -89,6 +93,7 @@ def clear_table(table_name: str):
         delete_connection.commit()
 
 
+@database_exception
 def update_status_in_db(update_object: object):
     info(f'updating status in db to {update_object.status}')
     insert_connection, insert_cursor = db_connection_and_cursor()
@@ -102,6 +107,7 @@ def update_status_in_db(update_object: object):
         insert_connection.commit()
 
 
+@database_exception
 def delete_from_table(table_name: str, where: dict):
     info(f'deleting from table {table_name} with a condition')
     delete_connection, delete_cursor = db_connection_and_cursor()

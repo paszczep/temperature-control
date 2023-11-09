@@ -8,14 +8,14 @@ class TaskingChecking(TaskingExecution):
     def beginning(self):
         info('setting start temperature if necessary')
         self.intended_setting = self.t_start
-        if self.check:
+        if self.checking:
             self.set_temperature_if_necessary()
         else:
             self.set_temperature()
 
     def considering_cooling(self):
         info('anticipating maximum temperature')
-        if self.is_at_maximum(self.measurements):
+        if self.is_at_maximum():
             info('maximum temperature reached')
             self.intended_setting = self.t_min - 5
             self.set_temperature_if_necessary()
@@ -26,11 +26,11 @@ class TaskingChecking(TaskingExecution):
 
     def considering_adjusting(self):
         info('measure temperature and decide')
-        if self.is_at_minimum(self.measurements):
+        if self.is_at_minimum():
             info('minimum temperature reached')
             self.intended_setting = self.check + 1
             self.set_temperature()
-        elif self.is_at_maximum(self.measurements):
+        elif self.is_at_maximum():
             info('maximum temperature reached')
             self.intended_setting = self.check + 1
             self.set_temperature()

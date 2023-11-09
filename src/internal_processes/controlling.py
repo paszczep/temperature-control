@@ -1,5 +1,5 @@
-from src.external_apis.drive import Ctrl
-from src.internal_apis.models_data import Control, TaskControl, Setting, SetControl, ContainerSetPair, Check
+from src.external_apis.drive import DriveCtrl
+from src.internal_apis.models_data import ControlValues, TaskControlPair, SettingTask, SetControlPair, ContainerSetPair, CheckValues
 from src.internal_apis.database_query import insert_one_object_into_db, select_from_db
 from decimal import Decimal
 from time import time
@@ -14,22 +14,9 @@ class InvalidSettingRetry(Exception):
         super().__init__(self.message)
 
 
-class Controlling(Control):
-    control_temperature: str
-
-    def create_and_save_control(self) -> Control:
-        info('saving control')
-        control = Control(
-            id=str(uuid4()),
-            timestamp=int(time()),
-            target_setpoint=self.control_temperature)
-        insert_one_object_into_db(control)
-        return control
-
-
-def create_and_save_control(control_temperature: str) -> Control:
+def create_and_save_control(control_temperature: str) -> ControlValues:
     info('saving control')
-    control = Control(
+    control = ControlValues(
         id=str(uuid4()),
         timestamp=int(time()),
         target_setpoint=control_temperature)
@@ -37,9 +24,9 @@ def create_and_save_control(control_temperature: str) -> Control:
     return control
 
 
-def create_task_control_pairing(performed_task_control: Control, related_task_id: str):
+def create_task_control_pairing(performed_task_control: ControlValues, related_task_id: str):
     info('pairing setting with created control')
-    performed_control_relationship = TaskControl(
+    performed_control_relationship = TaskControlPair(
         control_id=performed_task_control.id,
         task_id=related_task_id)
     insert_one_object_into_db(performed_control_relationship)
@@ -55,30 +42,30 @@ def save_task_control(control_temperature: Union[int, Decimal], related_task_id:
 
 
 def retrieve_which_controls(task_id: str) -> Union[list[str], None]:
-    control_ids = select_from_db(table_name=TaskControl.__tablename__,
+    control_ids = select_from_db(table_name=TaskControlPair.__tablename__,
                                  columns=['control_id'],
                                  where_equals={'task_id': task_id},
                                  keys=False)
     return control_ids if control_ids else None
 
 
-def create_set_control_pairing(performed_set_control: Control, related_set: Setting):
+def create_set_control_pairing(performed_set_control: ControlValues, related_set: SettingTask):
     info('pairing setting with created control')
-    performed_control_relationship = SetControl(
+    performed_control_relationship = SetControlPair(
         control_id=performed_set_control.id,
         set_id=related_set.id)
     insert_one_object_into_db(performed_control_relationship)
 
 
-def get_setting_control(all_controls: list[Ctrl], container_name: str) -> Ctrl:
+def get_setting_control(all_controls: list[DriveCtrl], container_name: str) -> DriveCtrl:
     info('fetching working temperature setting value for comparison')
     return [c for c in all_controls if c.name == container_name].pop()
 
 
-def retrieve_relevant_controls(control_ids: list) -> Union[None, list[Control]]:
+def retrieve_relevant_controls(control_ids: list) -> Union[None, list[ControlValues]]:
     all_task_controls = [
-        Control(**control) for control in
-        select_from_db(Control.__tablename__, where_in={'id': control_ids}, keys=True)]
+        ControlValues(**control) for control in
+        select_from_db(ControlValues.__tablename__, where_in={'id': control_ids}, keys=True)]
     return all_task_controls
 
 
@@ -109,7 +96,7 @@ def retrieve_tasking_control_temperature(task_id: str) -> Union[Decimal, None]:
         return None
 
 
-def retrieve_tasking_controls(task_id: str) -> Union[list[Control], None]:
+def retrieve_tasking_controls(task_id: str) -> Union[list[ControlValues], None]:
     control_ids = retrieve_which_controls(task_id=task_id)
     info('retrieving relevant controls')
     if control_ids:

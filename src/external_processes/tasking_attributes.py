@@ -1,45 +1,40 @@
-from src.internal_apis.models_data import Tasking, Check, Control
+from src.internal_apis.models_data import TaskingValues, CheckValues, ControlValues
 from src.internal_processes.controlling import (retrieve_tasking_controls,
                                                 retrieve_tasking_control_temperature)
-from src.internal_processes.reading import measure_timely_temperature
-from src.internal_processes.checking import (retrieve_recent_check_temperature,
-                                             get_related_container_name, retrieve_relevant_checks)
+from src.internal_processes.controlling_new import ControllingTasking
+from src.internal_processes.reading import ReadingTasking
+from src.internal_processes.checking import CheckingTasking
 from logging import info
 from decimal import Decimal
 from time import time
 from typing import Union
 
 
-class TaskingAttributes(Tasking):
-    container_name: Union[None, str]
-    check: Union[None, Decimal, int] = None
-    control: Union[None, Decimal, int] = None
-    measurements: Union[None, list[Decimal]] = None
+class TaskingAttributes(TaskingValues):
+    container_name: str
+    checking: CheckingTasking
+    controlling: ControllingTasking
+    reading: ReadingTasking
 
-    all_checks: Union[None, list[Check]] = None
-    all_controls: Union[None, list[Control]] = None
+    def __init__(self):
+        self.checking = CheckingTasking(self.id)
+        self.container_name = self.checking.container
+        self.controlling = ControllingTasking(self.id)
+        self.reading = ReadingTasking(self.id, self.container_name)
 
-    def fetch_attributes(self):
-        self.container_name = get_related_container_name(self.id)
-        self.check = retrieve_recent_check_temperature(self.container_name)
-        self.control = retrieve_tasking_control_temperature(task_id=self.id)
-        self.measurements = measure_timely_temperature(task_id=self.id)
-        self.all_checks = retrieve_relevant_checks(self.container_name)
-        self.all_controls = retrieve_tasking_controls(self.container_name)
+    def is_at_minimum(self) -> bool:
+        return any(r <= self.t_min for r in self.reading.current_temperatures)
 
-    def is_at_minimum(self, measured_temperatures: list[Decimal]) -> bool:
-        return any(r <= self.t_min for r in measured_temperatures)
+    def is_at_maximum(self) -> bool:
+        return any(r >= self.t_max for r in self.reading.current_temperatures)
 
-    def is_at_maximum(self, measured_temperatures: list[Decimal]) -> bool:
-        return any(r >= self.t_max for r in measured_temperatures)
-
-    def has_ever_reached_maximum(self, all_past_temperatures: list[Decimal]) -> bool:
-        return any(t >= self.t_max for t in all_past_temperatures)
+    def has_ever_reached_maximum(self) -> bool:
+        return any(t >= self.t_max for t in self.reading.past_temperatures)
 
     def is_finished(self) -> bool:
         info(f'server time: {(now_time := int(time()))} '
-                     f'task start: {(task_start_time := self.start)} '
-                     f'task duration: {(task_duration := self.duration)}')
+             f'task start: {(task_start_time := self.start)} '
+             f'task duration: {(task_duration := self.duration)}')
         if now_time > task_start_time + task_duration:
             return True
 

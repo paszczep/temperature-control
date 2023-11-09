@@ -1,5 +1,5 @@
 from src.internal_apis.database_query import update_status_in_db
-from src.internal_processes.driving import DrivingSetting
+from src.internal_processes.driving import DrivingAction
 from src.internal_processes.controlling import (save_task_control)
 from src.external_processes.tasking_attributes import TaskingAttributes
 from logging import info
@@ -14,10 +14,10 @@ class TaskingExecution(TaskingAttributes):
         info(f'task driver setting '
              f'temperature: {self.intended_setting}'
              f'in container: {self.container_name}')
-        DrivingSetting(
+        DrivingAction(
             process_id=self.id,
             container_name=self.container_name,
-            temperature_setting=self.intended_setting).driver_set_go_save_checks_and_control()
+            temperature_setting=self.intended_setting).driver_set_go_save_logs()
 
     def set_temperature_if_necessary(self):
         info(f'task considering {str(self.intended_setting)}, provided {str(self.check)}')

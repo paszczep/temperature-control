@@ -9,7 +9,18 @@ from time import time
 CHECK_MINUTES_INTERVAL = 15
 
 
-@dataclass
+def _string_temperature(value: Union[int, str, Decimal]) -> str:
+    if isinstance(value, int):
+        value = f'{value}.0'
+    elif isinstance(value, Decimal):
+        value = str(value)
+    elif isinstance(value, str) and value[-2] == '.':
+        pass
+    else:
+        raise ValueError('Wrong temperature value')
+    return value
+
+
 class Timestamped:
     timestamp: int
 
@@ -28,7 +39,7 @@ class DataObject:
 
 
 @dataclass
-class Reading(DataObject):
+class ReadingValues(DataObject):
     __tablename__ = 'read'
     id: str
     temperature: Union[str, Decimal]
@@ -40,11 +51,11 @@ class Reading(DataObject):
         return bool(self.read_time > (time() - 60*minutes))
 
 
-def use_read(read_read: Reading) -> Reading:
+def use_read(read_read: ReadingValues) -> ReadingValues:
     datetime_read = datetime.strptime(read_read.read_time, '%d/%m/%y %H:%M:%S')
     read_timezone = pytz.timezone('Europe/Berlin')
     datetime_local = read_timezone.localize(datetime_read)
-    return Reading(
+    return ReadingValues(
         id=read_read.id,
         temperature=Decimal(read_read.temperature[:-2]),
         read_time=int(datetime_local.timestamp()),
@@ -53,14 +64,14 @@ def use_read(read_read: Reading) -> Reading:
 
 
 @dataclass(frozen=True)
-class TaskRead:
+class TaskReadPair:
     __tablename__ = 'task_reads'
     task_id: str
     read_id: str
 
 
 @dataclass
-class Thermometer:
+class ThermometerThing:
     __tablename__ = 'thermometer'
     device_id: str
     device_group: str
@@ -68,7 +79,7 @@ class Thermometer:
 
 
 @dataclass(frozen=True)
-class ContainerThermometer:
+class ContainerThermometerPair:
     __tablename__ = "container_thermometers"
     container_id: str
     thermometer_id: str
@@ -87,14 +98,14 @@ def choose_label() -> str:
 
 
 @dataclass
-class Container:
+class ContainerThing:
     __tablename__ = 'Container'
     name: str
     label: str = field(default_factory=lambda: choose_label())
 
 
 @dataclass
-class Control(DataObject, Timestamped):
+class ControlValues(DataObject, Timestamped):
     __tablename__ = 'control'
     id: str
     timestamp: int
@@ -102,7 +113,7 @@ class Control(DataObject, Timestamped):
 
 
 @dataclass
-class Check(DataObject, Timestamped):
+class CheckValues(DataObject, Timestamped):
     __tablename__ = 'container_check'
     id: str
     container: str
@@ -114,21 +125,21 @@ class Check(DataObject, Timestamped):
 
 
 @dataclass(frozen=True)
-class TaskControl:
+class TaskControlPair:
     __tablename__ = "task_controls"
     task_id: str
     control_id: str
 
 
 @dataclass(frozen=True)
-class SetControl:
+class SetControlPair:
     __tablename__ = "set_controls"
     set_id: str
     control_id: str
 
 
 @dataclass
-class Tasking:
+class TaskingValues:
     __tablename__ = 'Task'
     id: str
     start: int
@@ -144,14 +155,14 @@ class Tasking:
 
 
 @dataclass(frozen=True)
-class ContainerTask:
+class ContainerTaskPair:
     __tablename__ = 'container_task'
     container_id: str
     task_id: str
 
 
 @dataclass
-class Setting(Timestamped):
+class SettingTask(Timestamped):
     __tablename__ = 'temp_set'
     id: str
     status: str
@@ -166,14 +177,14 @@ class ContainerSetPair:
     set_id: str
 
 
-data_objects = [Container,
-                Thermometer,
-                ContainerThermometer,
-                Check,
-                Control,
-                Reading,
-                Tasking,
-                TaskRead,
-                TaskControl,
-                Setting,
-                SetControl]
+data_objects = [ContainerThing,
+                ThermometerThing,
+                ContainerThermometerPair,
+                CheckValues,
+                ControlValues,
+                ReadingValues,
+                TaskingValues,
+                TaskReadPair,
+                TaskControlPair,
+                SettingTask,
+                SetControlPair]
