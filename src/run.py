@@ -1,4 +1,4 @@
-from src.internal_apis.execute import run_lambda
+from src.internal_apis.process import run_lambda
 import logging
 
 logger = logging.getLogger()

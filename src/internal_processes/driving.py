@@ -1,41 +1,40 @@
-from src.external_apis.drive import ContainerSettingsDriver, DriveCtrl
-from src.internal_processes.checking import Checking
-from src.internal_processes.controlling import create_and_save_control, create_task_control_pairing
+from src.external_apis.drive_control import ControlContainersDriver, DriverCheck
 from typing import Union
 from decimal import Decimal
-from logging import info
-
-
-def _parse_temperature_value(value: Union[int, str, Decimal]) -> str:
-    if isinstance(value, int):
-        value = f'{str(value)}.0'
-    elif isinstance(value, Decimal):
-        value = str(value)
-    return value
+from logging import info, warning
 
 
 class DrivingAction:
-    process_id: str
     container_name: str
     temperature_setting: Union[int, str, Decimal]
 
+    @staticmethod
+    def parse_temperature_value(value: Union[int, str, Decimal]) -> Union[str, ValueError]:
+        if value == '':
+            raise ValueError
+        elif isinstance(value, Decimal):
+            value = str(value)
+        if isinstance(value, int):
+            value = f'{value}.0'
+        elif isinstance(value, str) and value != '':
+            if value[-2] == '.':
+                pass
+            elif '.' not in value:
+                value = f'{value}.0'
+        if not isinstance(value, str) and value[-2] == '.':
+            warning(f'invalid setting value {value}')
+            raise ValueError('Wrong temperature value')
+        return value
+
     def __init__(self,
-                 process_id: str,
                  container_name: str,
                  temperature_setting: Union[int, str, Decimal]):
-        self.process_id = process_id
+        info('driving initiating')
         self.container_name = container_name
-        self.temperature_setting = _parse_temperature_value(temperature_setting)
+        self.temperature_setting = self.parse_temperature_value(temperature_setting)
 
-    def driver_check_and_introduce_setting(self) -> list[DriveCtrl]:
-        info(f'launching webdriver to set {self.temperature_setting} in {self.container_name}')
-        return ContainerSettingsDriver().check_containers_and_set_temperature(
+    def driver_check_and_introduce_setting(self) -> list[DriverCheck]:
+        info(f'driving launching to set {self.temperature_setting} in {self.container_name}')
+        return ControlContainersDriver().check_containers_and_set_temperature(
             container=self.container_name,
             temperature=self.temperature_setting)
-
-    def driver_set_go_save_logs(self):
-        info(f'initiating driver to set {str(self.temperature_setting)}')
-        driver_checks = self.driver_check_and_introduce_setting()
-        Checking().create_and_save_checks(driver_checks)
-        performed_control = create_and_save_control(self.temperature_setting)
-        create_task_control_pairing(performed_control, self.process_id)

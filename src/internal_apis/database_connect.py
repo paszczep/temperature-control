@@ -1,9 +1,10 @@
-from psycopg2 import connect, OperationalError
+from psycopg2 import connect, OperationalError, InternalError
 from pathlib import Path
 from dotenv import dotenv_values
 from logging import info, warning
-from time import sleep
 from psycopg2.extensions import cursor, connection
+from time import sleep
+from functools import wraps
 
 
 dotenv_path = Path(__file__).parent.parent.parent / '.env'
@@ -18,7 +19,7 @@ db_config = {
 }
 
 
-CONNECTION_RETRIES = 3
+CONNECTION_RETRIES = 5
 
 
 def connection_generator(retries: int = CONNECTION_RETRIES):
@@ -28,50 +29,39 @@ def connection_generator(retries: int = CONNECTION_RETRIES):
             yield consecutive_connection
         except OperationalError as e:
             retries -= 1
-            warning(f"error connecting to database: {e}")
-            continue
-        finally:
+            warning(f"db error connecting to database: {e}")
+            sleep(1)
             info(f'db connection count {CONNECTION_RETRIES - retries + 1}')
+            continue
     else:
-        raise StopIteration
+        raise ConnectionError("Database connection error")
 
 
-def get_connection_and_cursor():
-    connection_gen = connection_generator()
-    while True:
-        try:
-            next_db_connection = next(connection_gen)
-            next_db_cursor = next_db_connection.cursor()
-            return next_db_connection, next_db_cursor
-        except StopIteration:
-            warning("no working database connections available")
-            raise ConnectionError
+connection_gen = connection_generator()
 
 
-def db_connection_and_cursor():
-    info('db cursor')
-    return get_connection_and_cursor()
+def db_connection_and_cursor() -> tuple[connection, cursor]:
+    for next_db_connection in connection_gen:
+        next_db_cursor = next_db_connection.cursor()
+        return next_db_connection, next_db_cursor
 
 
-def database_exception(func):
-    def wrapper(*args, **kwargs):
-        try:
-            info('db interaction start')
+def db_retry_on_exception(
+        max_retries: int = CONNECTION_RETRIES,
+        exceptions=(OperationalError, InternalError,)):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            retries = 0
+            while retries < max_retries:
+                try:
+                    result = func(*args, **kwargs)
+                    return result
+                except exceptions as e:
+                    warning(f"Function {func.__name__}. Exception {e} occurred. Retrying...")
+                    retries += 1
+            raise Exception(f"Function {func.__name__} exceeded maximum retries.")
 
-            result = func(*args, **kwargs)
+        return wrapper
 
-        except Exception as e:
-            info(f"an error occurred: {e}")
-
-        else:
-            # info("No exceptions occurred")
-            return result
-
-        finally:
-            # Code to run no matter what, for cleanup, etc.
-            info("db cursor closed")
-
-    return wrapper
-
-
-
+    return decorator

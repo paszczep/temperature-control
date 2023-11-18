@@ -1,4 +1,4 @@
-from src.internal_apis.database_connect import db_connection_and_cursor, database_exception
+from src.internal_apis.database_connect import db_connection_and_cursor, db_retry_on_exception
 from typing import Union
 from logging import info
 # from psycopg2.extras import execute_values
@@ -11,7 +11,7 @@ from logging import info
 #         [(1, 2, 3), (4, 5, 6), (7, 8, 9)])
 
 
-@database_exception
+@db_retry_on_exception()
 def select_from_db(
         table_name: str,
         columns: Union[list, None] = None,
@@ -52,11 +52,11 @@ def select_from_db(
     return return_values
 
 
-@database_exception
+@db_retry_on_exception()
 def insert_multiple_objects_into_db(data_objects: list):
     object_zero = data_objects[0]
     table_name = object_zero.__tablename__
-    info(f'inserting multiple {type(object_zero)} objects into db')
+    info(f'db inserting multiple objects {table_name}')
     value_keys = tuple(object_zero.__annotations__.keys())
     insert_data = [[row.__dict__[key] for key in value_keys] for row in data_objects]
     insert_query = f"""
@@ -68,10 +68,10 @@ def insert_multiple_objects_into_db(data_objects: list):
         insert_connection.commit()
 
 
-@database_exception
+@db_retry_on_exception()
 def insert_one_object_into_db(data_object: object):
     table_name = data_object.__tablename__
-    info(f'inserting object into {table_name}')
+    info(f'db inserting object {table_name}')
     value_keys = tuple(data_object.__annotations__.keys())
     insert_data = [data_object.__dict__[key] for key in value_keys]
     insert_query = f"""
@@ -83,9 +83,9 @@ def insert_one_object_into_db(data_object: object):
         insert_connection.commit()
 
 
-@database_exception
+@db_retry_on_exception()
 def clear_table(table_name: str):
-    info(f'clearing table {table_name}')
+    info(f'db clearing table {table_name}')
     delete_query = f"""DELETE FROM {table_name}"""
     delete_connection, delete_cursor = db_connection_and_cursor()
     with delete_cursor:
@@ -93,9 +93,9 @@ def clear_table(table_name: str):
         delete_connection.commit()
 
 
-@database_exception
+@db_retry_on_exception()
 def update_status_in_db(update_object: object):
-    info(f'updating status in db to {update_object.status}')
+    info(f'db updating status to {update_object.status}')
     insert_connection, insert_cursor = db_connection_and_cursor()
     update_query = f"""
         UPDATE {update_object.__tablename__} 
@@ -107,9 +107,9 @@ def update_status_in_db(update_object: object):
         insert_connection.commit()
 
 
-@database_exception
+@db_retry_on_exception()
 def delete_from_table(table_name: str, where: dict):
-    info(f'deleting from table {table_name} with a condition')
+    info(f'db deleting from table {table_name} with a condition')
     delete_connection, delete_cursor = db_connection_and_cursor()
     delete_query = f"""DELETE FROM {table_name} WHERE {list(where.keys())[0]} = '{list(where.values())[0]}'"""
     with delete_cursor:
