@@ -12,6 +12,10 @@ from typing import Union
 class SettingDriving(ValuesSetting):
     container_name: str
 
+    @staticmethod
+    def _log_setting(value: Union[int, str, Decimal]) -> str:
+        return DrivingAction.parse_temperature_value(value)
+
     def execute_setting_driver(self) -> list[DriverCheck]:
         info('setting running driver')
         return DrivingAction(
@@ -23,9 +27,12 @@ class SettingProcess(SettingDriving):
     checking: CheckingSetting
     controlling: ControllingSetting
 
-    @staticmethod
-    def _log_setting(value: Union[int, str, Decimal]) -> str:
-        return DrivingAction.parse_temperature_value(value)
+    def _log_container(self):
+        _check = [c for c in self.checking.driver_checks if c.name == self.container_name].pop()
+        info(f'setting check power:     {_check.power}')
+        info(f'setting check logged:    {_check.logged}')
+        info(f'setting check received:  {_check.received}')
+        info(f'setting check set point: {self._log_setting(_check.setpoint)}')
 
     def end_set(self):
         info('setting process ended')
@@ -38,13 +45,6 @@ class SettingProcess(SettingDriving):
         self.container_name = self.checking.container
         info(f'setting - container: {self.container_name}, point: {self._log_setting(self.temperature)}')
         self.controlling = ControllingSetting(self.id)
-        
-    def _log_container(self):
-        _check = [c for c in self.checking.driver_checks if c.name == self.container_name].pop()
-        info(f'setting check power:     {_check.power}')
-        info(f'setting check logged:    {_check.logged}')
-        info(f'setting check received:    {_check.received}')
-        info(f'setting check set point: {self._log_setting(_check.setpoint)}')
 
     def execute_and_save_logs(self):
         self.checking.driver_checks = self.execute_setting_driver()

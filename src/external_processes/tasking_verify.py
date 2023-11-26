@@ -51,9 +51,9 @@ class TaskingVerify(TaskingDecide):
         info(f'verify control point: {self.log_setting(control)}')
         info(f'verify check point:   {check}')
         if control != check:
-            info('verify retrying previous setting')
+            info('verify retrying previous setting control')
             self.drive_setting_save_logs(control)
-            raise StopIteration
+            raise StopIteration("verify retried previous setting control")
         else:
             info('verify setting pass')
             pass

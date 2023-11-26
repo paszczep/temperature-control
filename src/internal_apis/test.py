@@ -40,9 +40,9 @@ class Test:
         info('testing measurement availability')
         read_thermometers = read_all_thermometers()
         for device_log in read_thermometers:
-            info(f'   {device_log.measure_time}   '
-                 f'{device_log.device_name}   '
-                 f'{device_log.temperature}')
+            info(f'{device_log.measure_time}   '
+                 f'{device_log.temperature}   '
+                 f'{device_log.device_name}')
         assert len(read_thermometers) > 0
         assert isinstance(read_thermometers.pop(), DeviceRead)
 

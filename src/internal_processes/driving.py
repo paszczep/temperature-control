@@ -11,17 +11,17 @@ class DrivingAction:
     @staticmethod
     def parse_temperature_value(value: Union[int, str, Decimal]) -> Union[str, ValueError]:
         if value == '':
-            raise ValueError
-        elif isinstance(value, Decimal):
+            raise ValueError('Empty point setting!')
+        if isinstance(value, Decimal):
             value = str(value)
-        if isinstance(value, int):
+        elif isinstance(value, int):
             value = f'{value}.0'
-        elif isinstance(value, str) and value != '':
-            if value[-2] == '.':
-                pass
-            elif '.' not in value:
+        if isinstance(value, str):
+            if '.' not in value:
                 value = f'{value}.0'
-        if not isinstance(value, str) and value[-2] == '.':
+            elif value[-2] == '.':
+                pass
+        else:
             warning(f'invalid setting value {value}')
             raise ValueError('Wrong temperature value')
         return value

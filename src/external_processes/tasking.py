@@ -3,8 +3,6 @@ from src.internal_processes.controlling import InvalidSettingRetry
 from src.external_processes.tasking_verify import TaskingVerify
 from logging import info, warning
 from time import time
-# from typing import Union
-# from decimal import Decimal
 
 
 class TaskingProcess(TaskingVerify):
@@ -24,7 +22,7 @@ class TaskingProcess(TaskingVerify):
             (0.125, 0.25): self.task_consider_cooling,
             (0.25, 0.75): self.task_consider_adjusting,
             (0.75, 1.0): self.task_adjusting,
-            (1.0, 1.25): self.task_finishing,
+            (1.0, 1.25): self.task_finishing
         }
         for stage, action in duration_stages.items():
             _open, _close = stage
@@ -51,7 +49,6 @@ class TaskingRunning(TaskingProcess):
 
     def run_task(self):
         info('process running task')
-
         if self.task.status == 'running':
             try:
                 self.task_process()

@@ -18,7 +18,9 @@ class DriverExecuteError(Exception):
 class ControlContainersDriver(CheckContainersDriver):
     container: str
     temperature: str
-    debug: bool = True
+    debug: bool = False
+    if debug:
+        warning('debug active')
 
     def _open_container_commands(self):
         info('driver opening container commands')
@@ -98,8 +100,8 @@ class ControlContainersDriver(CheckContainersDriver):
         _set_point = check_container.setpoint
         _log_container()
         if _power == 'On':
-            if _set_point:
-                return Decimal(check_container.setpoint)
+            if _set_point != '':
+                return Decimal(_set_point)
             else:
                 warning('driver no active check set point available')
                 raise RuntimeError
